@@ -23,12 +23,11 @@ from ghga_service_chassis_lib.s3 import S3ConfigBase
 from .models import SupportedLanguages
 
 
-# Please adapt config prefix and remove unnecessary config bases:
-@config_from_yaml(prefix="my_microservice")
+@config_from_yaml(prefix="interrogation_room")
 class Config(ApiConfigBase, PubSubConfigBase, S3ConfigBase):
     """Config parameters and their defaults."""
 
-    service_name: str = "my_microservice"  # Please adapt
+    service_name: str = "interrogation_room"
     language: SupportedLanguages = "Croatian"
 
 
