@@ -18,7 +18,7 @@
 from fastapi import status
 from fastapi.testclient import TestClient
 
-from my_microservice.api.main import app
+from interrogation_room.api.main import app
 
 
 def test_index():
