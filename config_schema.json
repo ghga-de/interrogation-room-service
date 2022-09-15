@@ -51,7 +51,7 @@
     },
     "service_name": {
       "title": "Service Name",
-      "default": "my_microservice",
+      "default": "interrogation_room",
       "env_names": [
         "interrogation_room_service_name"
       ],
