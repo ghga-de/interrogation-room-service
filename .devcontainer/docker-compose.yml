@@ -12,7 +12,7 @@ services:
         INSTALL_NODE: "true"
         NODE_VERSION: "lts/*"
         # Please adapt to package name:
-        PACKAGE_NAME: "interrogation_room_service"
+        PACKAGE_NAME: "interrogation_room"
         # On Linux, you may need to update USER_UID and USER_GID below if not your local UID is not 1000.
         USER_UID: 1000
         USER_GID: 1000
@@ -32,7 +32,7 @@ services:
     # define environment variables
     environment:
       # Please adapt to package name:
-      MY_MICROSERVICE_CONFIG_YAML: /workspace/.devcontainer/.dev_config.yaml
+      INTERROGATION_ROOM_CONFIG_YAML: /workspace/.devcontainer/.dev_config.yaml
       # Used by db migration:
   localstack:
     image: localstack/localstack
