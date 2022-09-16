@@ -20,15 +20,12 @@ from ghga_service_chassis_lib.config import config_from_yaml
 from ghga_service_chassis_lib.pubsub import PubSubConfigBase
 from ghga_service_chassis_lib.s3 import S3ConfigBase
 
-from .models import SupportedLanguages
-
 
 @config_from_yaml(prefix="interrogation_room")
 class Config(ApiConfigBase, PubSubConfigBase, S3ConfigBase):
     """Config parameters and their defaults."""
 
     service_name: str = "interrogation_room"
-    language: SupportedLanguages = "Croatian"
 
 
 CONFIG = Config()
