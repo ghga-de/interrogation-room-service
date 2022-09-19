@@ -13,8 +13,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Utils for Fixture handling"""
+"""Entrypoint of the package"""
 
-from pathlib import Path
+from ghga_service_chassis_lib.api import run_server
 
-BASE_DIR = Path(__file__).parent.resolve()
+from .api.main import app  # noqa: F401 pylint: disable=unused-import
+from .config import CONFIG, Config
+
+
+def run(config: Config = CONFIG):
+    """Run the service"""
+    # Please adapt to package name
+    run_server(app="interrogation_room.__main__:app", config=config)
+
+
+if __name__ == "__main__":
+    run()

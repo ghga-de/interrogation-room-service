@@ -7,7 +7,6 @@ cors_allowed_methods: null
 cors_allowed_origins: null
 docs_url: /docs
 host: 127.0.0.1
-language: Greek
 log_level: info
 openapi_url: /openapi.json
 port: 8080
@@ -17,5 +16,5 @@ s3_access_key_id: test
 s3_endpoint_url: http://localstack:4566
 s3_secret_access_key: test
 s3_session_token: null
-service_name: my_microservice
+service_name: interrogation_room
 workers: 1

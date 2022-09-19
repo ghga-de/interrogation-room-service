@@ -8,7 +8,7 @@
       "description": "URL to the S3 API.",
       "example": "http://localhost:4566",
       "env_names": [
-        "my_microservice_s3_endpoint_url"
+        "interrogation_room_s3_endpoint_url"
       ],
       "type": "string"
     },
@@ -17,7 +17,7 @@
       "description": "Part of credentials for login into the S3 service. See: https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html",
       "example": "my-access-key-id",
       "env_names": [
-        "my_microservice_s3_access_key_id"
+        "interrogation_room_s3_access_key_id"
       ],
       "type": "string"
     },
@@ -26,7 +26,7 @@
       "description": "Part of credentials for login into the S3 service. See: https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html",
       "example": "my-secret-access-key",
       "env_names": [
-        "my_microservice_s3_secret_access_key"
+        "interrogation_room_s3_secret_access_key"
       ],
       "type": "string"
     },
@@ -35,7 +35,7 @@
       "description": "Part of credentials for login into the S3 service. See: https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html",
       "example": "my-session-token",
       "env_names": [
-        "my_microservice_s3_session_token"
+        "interrogation_room_s3_session_token"
       ],
       "type": "string"
     },
@@ -44,16 +44,16 @@
       "description": "Path to a config file for specifying more advanced S3 parameters. This should follow the format described here: https://boto3.amazonaws.com/v1/documentation/api/latest/guide/configuration.html#using-a-configuration-file",
       "example": "~/.aws/config",
       "env_names": [
-        "my_microservice_aws_config_ini"
+        "interrogation_room_aws_config_ini"
       ],
       "type": "string",
       "format": "path"
     },
     "service_name": {
       "title": "Service Name",
-      "default": "my_microservice",
+      "default": "interrogation_room",
       "env_names": [
-        "my_microservice_service_name"
+        "interrogation_room_service_name"
       ],
       "type": "string"
     },
@@ -62,7 +62,7 @@
       "description": "Name or IP address of the host running the RabbitMQ broker.",
       "example": "rabbitmq",
       "env_names": [
-        "my_microservice_rabbitmq_host"
+        "interrogation_room_rabbitmq_host"
       ],
       "type": "string"
     },
@@ -71,7 +71,7 @@
       "description": "Port of the RabbitMQ broker running on the specified host.",
       "default": 5672,
       "env_names": [
-        "my_microservice_rabbitmq_port"
+        "interrogation_room_rabbitmq_port"
       ],
       "type": "integer"
     },
@@ -80,7 +80,7 @@
       "description": "IP of the host.",
       "default": "127.0.0.1",
       "env_names": [
-        "my_microservice_host"
+        "interrogation_room_host"
       ],
       "type": "string"
     },
@@ -89,7 +89,7 @@
       "description": "Port to expose the server on the specified host",
       "default": 8080,
       "env_names": [
-        "my_microservice_port"
+        "interrogation_room_port"
       ],
       "type": "integer"
     },
@@ -98,7 +98,7 @@
       "description": "Controls the verbosity of the log.",
       "default": "info",
       "env_names": [
-        "my_microservice_log_level"
+        "interrogation_room_log_level"
       ],
       "enum": [
         "critical",
@@ -115,7 +115,7 @@
       "description": "A development feature. Set to `True` to automatically reload the server upon code changes",
       "default": false,
       "env_names": [
-        "my_microservice_auto_reload"
+        "interrogation_room_auto_reload"
       ],
       "type": "boolean"
     },
@@ -124,7 +124,7 @@
       "description": "Number of workers processes to run.",
       "default": 1,
       "env_names": [
-        "my_microservice_workers"
+        "interrogation_room_workers"
       ],
       "type": "integer"
     },
@@ -133,7 +133,7 @@
       "description": "Root path at which the API is reachable. This is relative to the specified host and port.",
       "default": "/",
       "env_names": [
-        "my_microservice_api_root_path"
+        "interrogation_room_api_root_path"
       ],
       "type": "string"
     },
@@ -142,7 +142,7 @@
       "description": "Path to get the openapi specification in JSON format. This is relative to the specified host and port.",
       "default": "/openapi.json",
       "env_names": [
-        "my_microservice_openapi_url"
+        "interrogation_room_openapi_url"
       ],
       "type": "string"
     },
@@ -151,7 +151,7 @@
       "description": "Path to host the swagger documentation. This is relative to the specified host and port.",
       "default": "/docs",
       "env_names": [
-        "my_microservice_docs_url"
+        "interrogation_room_docs_url"
       ],
       "type": "string"
     },
@@ -163,7 +163,7 @@
         "https://www.example.org"
       ],
       "env_names": [
-        "my_microservice_cors_allowed_origins"
+        "interrogation_room_cors_allowed_origins"
       ],
       "type": "array",
       "items": {
@@ -178,7 +178,7 @@
         "https://www.example.org"
       ],
       "env_names": [
-        "my_microservice_cors_allow_credentials"
+        "interrogation_room_cors_allow_credentials"
       ],
       "type": "boolean"
     },
@@ -189,7 +189,7 @@
         "*"
       ],
       "env_names": [
-        "my_microservice_cors_allowed_methods"
+        "interrogation_room_cors_allowed_methods"
       ],
       "type": "array",
       "items": {
@@ -201,26 +201,12 @@
       "description": "A list of HTTP request headers that should be supported for cross-origin requests. Defaults to []. You can use ['*'] to allow all headers. The Accept, Accept-Language, Content-Language and Content-Type headers are always allowed for CORS requests.",
       "example": [],
       "env_names": [
-        "my_microservice_cors_allowed_headers"
+        "interrogation_room_cors_allowed_headers"
       ],
       "type": "array",
       "items": {
         "type": "string"
       }
-    },
-    "language": {
-      "title": "Language",
-      "default": "Croatian",
-      "env_names": [
-        "my_microservice_language"
-      ],
-      "enum": [
-        "Greek",
-        "Croatian",
-        "French",
-        "German"
-      ],
-      "type": "string"
     }
   },
   "required": [
