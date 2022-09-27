@@ -17,15 +17,24 @@
 
 from ghga_service_chassis_lib.api import ApiConfigBase
 from ghga_service_chassis_lib.config import config_from_yaml
-from ghga_service_chassis_lib.pubsub import PubSubConfigBase
 from ghga_service_chassis_lib.s3 import S3ConfigBase
+from hexkit.providers.akafka import KafkaConfig
+from pydantic import Field
 
 
 @config_from_yaml(prefix="interrogation_room")
-class Config(ApiConfigBase, PubSubConfigBase, S3ConfigBase):
+class Config(ApiConfigBase, KafkaConfig, S3ConfigBase):
     """Config parameters and their defaults."""
 
     service_name: str = "interrogation_room"
+    bucket_id: str = Field(
+        ..., example="inbox", description=("Bucket ID representing the inbox.")
+    )
+    eks_url: str = Field(
+        ...,
+        example="http://127.0.0.1/eks",
+        description=("URL pointing to the Encryption Key Store service."),
+    )
 
 
 CONFIG = Config()

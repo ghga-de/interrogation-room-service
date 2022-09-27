@@ -12,26 +12,22 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+#
 
-"""Entrypoint of the package"""
+"""A collection of CLI utilities"""
 
-import asyncio
-
-from hexkit.providers.akafka import KafkaEventSubscriber
-
-from interrogation_room.adapters.inbound.kafka_ucs_consumer import UcsUploadedProtocol
-
-from .config import CONFIG, Config
+import typer
 
 
-async def run_subscriber(config: Config = CONFIG):
-    """Start the EventSubscriber part of the service"""
-    async with KafkaEventSubscriber.construct(
-        config=config, translator=UcsUploadedProtocol()
-    ) as subscriber:
-        await subscriber.run()
+def echo_success(message: str):
+    """Print a success message."""
+
+    styled_message = typer.style(text=message, fg=typer.colors.GREEN)
+    typer.echo(styled_message)
 
 
-if __name__ == "__main__":
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(run_subscriber())
+def echo_failure(message: str):
+    """Print a failure message."""
+
+    styled_message = typer.style(text=message, fg=typer.colors.RED)
+    typer.echo(styled_message)

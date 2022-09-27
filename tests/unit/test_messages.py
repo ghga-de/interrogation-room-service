@@ -12,26 +12,25 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+""" """
 
-"""Entrypoint of the package"""
+from typing import Dict, Union
 
-import asyncio
+import pytest
 
-from hexkit.providers.akafka import KafkaEventSubscriber
-
-from interrogation_room.adapters.inbound.kafka_ucs_consumer import UcsUploadedProtocol
-
-from .config import CONFIG, Config
-
-
-async def run_subscriber(config: Config = CONFIG):
-    """Start the EventSubscriber part of the service"""
-    async with KafkaEventSubscriber.construct(
-        config=config, translator=UcsUploadedProtocol()
-    ) as subscriber:
-        await subscriber.run()
+from .fixtures.kafka_fixtures import event_fixture  # noqa: F401
+from .fixtures.kafka_fixtures import kafka_fixture  # noqa: F401
+from .fixtures.kafka_fixtures import KafkaFixture
 
 
-if __name__ == "__main__":
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(run_subscriber())
+@pytest.mark.asyncio
+async def test_incoming_message(
+    *,
+    kafka_fixture: KafkaFixture,  # noqa: F811
+    event_fixture: Dict[str, Union[object, str]],  # noqa: F811
+):
+    """ """
+    print(kafka_fixture.publisher)
+    print(kafka_fixture.subscriber)
+    await kafka_fixture.publisher.publish(**event_fixture)
+    await kafka_fixture.subscriber.run(forever=False)

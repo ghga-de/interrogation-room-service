@@ -1,5 +1,4 @@
-# This file is only needed, if your repository uses FastAPI
-name: Check if openapi.yaml is up to date
+name: Check if the config schema and the example are up to date.
 
 on: push
 
@@ -12,8 +11,8 @@ jobs:
       - id: common
         uses: ghga-de/gh-action-common@v1.0.2
 
-      - name: Check if openapi.yaml is up to date
+      - name: Check config docs
         run: |
           export ${{ steps.common.outputs.CONFIG_YAML_ENV_VAR_NAME }}="${{ steps.common.outputs.CONFIG_YAML }}"
 
-          ./scripts/update_openapi_docs.py --check
+          ./scripts/update_config_docs.py --check
