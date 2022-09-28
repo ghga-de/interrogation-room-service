@@ -15,7 +15,7 @@
 """Fixtures and classes to test kafka communication"""
 
 from dataclasses import dataclass
-from typing import AsyncGenerator, Dict, Union
+from typing import AsyncGenerator, Collection, Mapping
 
 import pytest_asyncio
 from hexkit.custom_types import Ascii, JsonObject
@@ -57,7 +57,7 @@ class SubscriberTestProtocol(EventSubscriberProtocol):
 
 
 @pytest_asyncio.fixture
-async def event_fixture() -> AsyncGenerator[Dict[str, Union[object, str]], None]:
+async def event_fixture() -> AsyncGenerator[Mapping[str, Collection[str]], None]:
     """ """
     data = FileUploadCompletedEvent(file_id="123", sha256_checksum="456", size=100)
     type_ = "test_type"

@@ -79,14 +79,14 @@ async def process_new_upload(  # pylint: disable=too-many-locals
                 part_size=PART_SIZE,
                 part_checksums_md5=part_checksums[0],
                 part_checksums_sha256=part_checksums[1],
-            )
+            ).dict()
         else:
             topic = "upload_validation_failure"
             # implement exception handling, get cause from exception
             data = UploadValidationFailureEvent(
                 file_id=object_id, cause="Checksum mismatch"
-            )
-        publisher.publish(paylod=data.dict(), type_=type_, key=key, topic=topic)
+            ).dict()
+        publisher.publish(paylod=data, type_=type_, key=key, topic=topic)
 
 
 async def send_to_eks(*, file_part: bytes, eks_url: str) -> Tuple[bytes, str, int]:
