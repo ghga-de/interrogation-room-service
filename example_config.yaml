@@ -10,7 +10,7 @@ docs_url: /docs
 eks_url: http://127.0.0.1/eks
 host: 127.0.0.1
 kafka_servers:
-  - localhost:9092
+- localhost:9092
 log_level: info
 openapi_url: /openapi.json
 port: 8080
