@@ -3,6 +3,9 @@
 
 cd /workspace
 
+# curl dependencies
+sudo apt install libcurl4-openssl-dev libssl-dev
+
 # install in edit mode with testing dependencies
 pip install \
     -e \
