@@ -21,7 +21,7 @@ from hexkit.custom_types import Ascii, JsonObject
 from hexkit.protocols.eventsub import EventSubscriberProtocol
 from pydantic import BaseModel, Field
 
-from interrogation_room.core.upload_handler import process_new_upload
+from irs.core.upload_handler import process_new_upload
 
 
 class FileUploadCompletedEvent(BaseModel):

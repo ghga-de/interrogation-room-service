@@ -32,4 +32,4 @@ USER appuser
 ENV PYTHONUNBUFFERED=1
 
 # Please adapt to package name:
-ENTRYPOINT ["interrogation_room"]
+ENTRYPOINT ["irs"]

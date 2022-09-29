@@ -27,9 +27,7 @@ from hexkit.providers.akafka import (
 )
 from testcontainers.kafka import KafkaContainer
 
-from interrogation_room.adapters.inbound.kafka_ucs_consumer import (
-    FileUploadCompletedEvent,
-)
+from irs.adapters.inbound.kafka_ucs_consumer import FileUploadCompletedEvent
 
 
 class SubscriberTestProtocol(EventSubscriberProtocol):

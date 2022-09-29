@@ -13,22 +13,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""
-Module containing the main FastAPI router and (optionally) top-level API enpoints.
-Additional endpoints might be structured in dedicated modules
-(each of them having a sub-router).
-"""
+"""Entrypoint of the package"""
 
-from fastapi import FastAPI
-from ghga_service_chassis_lib.api import configure_app
+import asyncio
 
-from ..config import CONFIG
+from hexkit.providers.akafka import KafkaEventSubscriber
 
-app = FastAPI()
-configure_app(app, config=CONFIG)
+from irs.adapters.inbound.kafka_ucs_consumer import UcsUploadedProtocol
+
+from .config import CONFIG, Config
 
 
-@app.get("/", summary="Greet the world")
-async def index():
-    """Greet the World"""
-    return "Hello World."
+async def run_subscriber(config: Config = CONFIG):
+    """Start the EventSubscriber part of the service"""
+    async with KafkaEventSubscriber.construct(
+        config=config, translator=UcsUploadedProtocol()
+    ) as subscriber:
+        await subscriber.run()
+
+
+if __name__ == "__main__":
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(run_subscriber())

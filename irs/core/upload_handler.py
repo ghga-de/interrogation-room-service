@@ -25,12 +25,12 @@ from crypt4gh.lib import CIPHER_SEGMENT_SIZE, decrypt_block
 from hexkit.providers.akafka import KafkaEventPublisher
 from hexkit.providers.s3.provider import S3Config, S3ObjectStorage
 
-from interrogation_room.adapters.outbound.kafka_producer import (
+from irs.adapters.outbound.kafka_producer import (
     UploadValidationFailureEvent,
     UploadValidationSuccessEvent,
 )
-from interrogation_room.config import CONFIG
-from interrogation_room.core.exceptions import UnprocessedBytesError
+from irs.config import CONFIG
+from irs.core.exceptions import UnprocessedBytesError
 
 PART_SIZE = 16 * 1024**2
 
@@ -42,18 +42,7 @@ async def process_new_upload(  # pylint: disable=too-many-locals
     Forwards first file part to encryption key store, retrieves file encryption
     secret(s) (K_data), decrypts file and computes checksums
     """
-    # configure s3 and request file parts from inbox
-    config = S3Config(
-        s3_endpoint_url=CONFIG.s3_endpoint_url,
-        s3_access_key_id=CONFIG.s3_access_key_id,
-        s3_secret_access_key=CONFIG.s3_secret_access_key,
-    )
-    storage = S3ObjectStorage(config=config)
-
-    download_url = storage.get_object_download_url(
-        bucket_id=CONFIG.bucket_id, object_id=object_id
-    )
-
+    download_url = await get_download_url(object_id=object_id)
     part = await retrieve_part(url=download_url, start=0, stop=PART_SIZE - 1)
 
     secret, secret_id, offset = await send_to_eks(
@@ -87,6 +76,20 @@ async def process_new_upload(  # pylint: disable=too-many-locals
                 file_id=object_id, cause="Checksum mismatch"
             ).dict()
         publisher.publish(paylod=data, type_=type_, key=key, topic=topic)
+
+
+async def get_download_url(*, object_id: str):
+    """Get object download URL frome"""
+    config = S3Config(
+        s3_endpoint_url=CONFIG.s3_endpoint_url,
+        s3_access_key_id=CONFIG.s3_access_key_id,
+        s3_secret_access_key=CONFIG.s3_secret_access_key,
+    )
+    storage = S3ObjectStorage(config=config)
+
+    return storage.get_object_download_url(
+        bucket_id=CONFIG.bucket_id, object_id=object_id
+    )
 
 
 async def send_to_eks(*, file_part: bytes, eks_url: str) -> Tuple[bytes, str, int]:
