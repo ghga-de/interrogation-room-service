@@ -22,7 +22,7 @@ from hexkit.providers.akafka import KafkaConfig
 from pydantic import Field
 
 
-@config_from_yaml(prefix="interrogation_room")
+@config_from_yaml(prefix="irs")
 class Config(ApiConfigBase, KafkaConfig, S3ConfigBase):
     """Config parameters and their defaults."""
 
