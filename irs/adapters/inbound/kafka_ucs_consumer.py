@@ -31,6 +31,7 @@ class FileUploadCompletedEvent(BaseModel):
     """
 
     file_id: str = Field(..., alias="file-id")
+    public_key: str = Field(..., alias="public-key")
     grouping_label: Optional[str] = Field(alias="grouping-label")
     sha256_checksum: str = Field(..., alias="sha256-checksum")
     size: int
@@ -72,8 +73,12 @@ class UcsUploadedProtocol(EventSubscriberProtocol):
         else:
             object_id = payload["file-id"]
             object_size = payload["size"]
+            public_key = payload["public-key"]
             # do we need to handle grouping label for prefixes in inbox?
             checksum = payload["sha256-checksum"]
             await process_new_upload(
-                object_id=object_id, object_size=object_size, checksum=checksum
+                object_id=object_id,
+                object_size=object_size,
+                public_key=public_key,
+                checksum=checksum,
             )

@@ -37,7 +37,7 @@ PART_SIZE = 16 * 1024**2
 
 
 async def process_new_upload(  # pylint: disable=too-many-locals
-    *, object_id: str, object_size: int, checksum: str
+    *, object_id: str, object_size: int, public_key: str, checksum: str
 ):
     """
     Forwards first file part to encryption key store, retrieves file encryption
@@ -47,7 +47,7 @@ async def process_new_upload(  # pylint: disable=too-many-locals
     part = await retrieve_part(url=download_url, start=0, stop=PART_SIZE - 1)
 
     secret, secret_id, offset = await send_to_eks(
-        file_part=part, eks_url=CONFIG.eks_url
+        file_part=part, public_key=public_key, eks_url=CONFIG.eks_url
     )
     part_checksums, total_checksum = await compute_checksums(
         download_url=download_url,
@@ -93,10 +93,12 @@ async def get_download_url(*, object_id: str):
     )
 
 
-async def send_to_eks(*, file_part: bytes, eks_url: str) -> Tuple[bytes, str, int]:
+async def send_to_eks(
+    *, file_part: bytes, public_key: str, eks_url: str
+) -> Tuple[bytes, str, int]:
     """Get encryption secret and file content offset from envelope"""
     data = base64.b64encode(file_part).hex()
-    request_body = {"user_id": "", "file_part": data}
+    request_body = {"public_key": public_key, "file_part": data}
     try:
         response = requests.post(url=eks_url, json=request_body, timeout=60)
     except requests.exceptions.RequestException as request_error:

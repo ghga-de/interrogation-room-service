@@ -20,6 +20,7 @@ from hexkit.providers.s3.testutils import S3Fixture
 
 from irs.core.upload_handler import make_chunks, retrieve_part, retrieve_parts
 
+from .fixtures.file_fixtures import prefilled_bucket  # noqa: F401
 from .fixtures.file_fixtures import BUCKET_ID, FILE_SIZE, OBJECT_ID, PART_SIZE
 
 

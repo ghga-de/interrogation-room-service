@@ -50,6 +50,7 @@ class SubscriberTestProtocol(EventSubscriberProtocol):
         assert topic in self.topics_of_interest
         assert type_ in self.types_of_interest
         assert payload["file_id"] == "123"
+        assert payload["public_key"] == "shashashasha"
         assert payload["size"] == 100
         assert payload["sha256_checksum"] == "456"
 
@@ -57,7 +58,9 @@ class SubscriberTestProtocol(EventSubscriberProtocol):
 @pytest_asyncio.fixture
 async def event_fixture() -> AsyncGenerator[Mapping[str, Collection[str]], None]:
     """ """
-    data = FileUploadCompletedEvent(file_id="123", sha256_checksum="456", size=100)
+    data = FileUploadCompletedEvent(
+        file_id="123", public_key="shashashasha", sha256_checksum="456", size=100
+    )
     type_ = "test_type"
     key = "test_key"
     topic = "test_topic"

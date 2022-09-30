@@ -31,7 +31,7 @@ services:
     # define environment variables
     environment:
       # Please adapt to package name:
-      INTERROGATION_ROOM_CONFIG_YAML: /workspace/.devcontainer/.dev_config.yaml
+      IRS_CONFIG_YAML: /workspace/.devcontainer/.dev_config.yaml
       # Used by db migration:
   localstack:
     image: localstack/localstack
