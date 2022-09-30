@@ -56,11 +56,10 @@ async def process_new_upload(  # pylint: disable=too-many-locals
         offset=offset,
     )
 
-    validation_success = total_checksum == checksum
     type_ = "irs_publisher"
     key = "irs"
     async with KafkaEventPublisher.construct(config=CONFIG) as publisher:
-        if validation_success:
+        if total_checksum == checksum:
             topic = "upload_validation_success"
             data = UploadValidationSuccessEvent(
                 content_id=total_checksum,
