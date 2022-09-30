@@ -14,24 +14,87 @@
 # limitations under the License.
 """ """
 
+import hashlib
 import sys
+import tempfile
+from dataclasses import dataclass
+from typing import AsyncGenerator
 
+import crypt4gh.header
+import crypt4gh.lib
 import pytest_asyncio
 from ghga_service_chassis_lib.utils import big_temp_file
 from hexkit.providers.s3.testutils import s3_fixture  # noqa: F401
 from hexkit.providers.s3.testutils import FileObject, S3Fixture
+
+from .keypair_fixtures import KeypairFixture, generate_keypair_fixture  # noqa: F401
 
 BUCKET_ID = "test"
 OBJECT_ID = "random-data"
 FILE_SIZE = 50 * 1024**2
 PART_SIZE = 16 * 1024**2
 
+sys.set_int_max_str_digits(256 * 1024**2)  # type: ignore
+
+
+@dataclass
+class EncryptedDataFixture:
+    """ """
+
+    checksum: str
+    file_secret: bytes
+    file_size: int
+    offset: int
+    s3_fixture: S3Fixture
+
 
 @pytest_asyncio.fixture
-async def prefilled_bucket(s3_fixture: S3Fixture) -> S3Fixture:  # noqa: F811
+async def prefilled_random_data(s3_fixture: S3Fixture) -> S3Fixture:  # noqa: F811
     """Bucket prefilled with one random test file"""
-    sys.set_int_max_str_digits(256 * 1024**2)  # type: ignore
     with big_temp_file(FILE_SIZE) as data:
         obj = FileObject(file_path=data.name, bucket_id=BUCKET_ID, object_id=OBJECT_ID)
         await s3_fixture.populate_file_objects([obj])
         yield s3_fixture
+
+
+@pytest_asyncio.fixture
+async def encrypted_random_data(
+    generate_keypair_fixture: KeypairFixture, s3_fixture: S3Fixture  # noqa: F811
+) -> AsyncGenerator[EncryptedDataFixture, None]:
+    """Bucket prefilled with crypt4gh-encrypted random data"""
+    with big_temp_file(FILE_SIZE) as data:
+        # rewind data pointer
+        data.seek(0)
+        with tempfile.NamedTemporaryFile() as encrypted_file:
+            private_key = generate_keypair_fixture.private_key
+            public_key = generate_keypair_fixture.public_key
+            enc_keys = [(0, private_key, public_key)]
+
+            crypt4gh.lib.encrypt(keys=enc_keys, infile=data, outfile=encrypted_file)
+
+            # get unencrypted checksum
+            data.seek(0)
+            checksum = hashlib.sha256(data.read()).hexdigest()
+
+            encrypted_file.seek(0)
+            dec_keys = [(0, private_key, None)]
+            session_keys, _ = crypt4gh.header.deconstruct(
+                infile=encrypted_file, keys=dec_keys, sender_pubkey=public_key
+            )
+            file_secret = session_keys[0]
+
+            offset = encrypted_file.tell()
+            # Rewind file
+            encrypted_file.seek(0)
+            obj = FileObject(
+                file_path=encrypted_file.name, bucket_id=BUCKET_ID, object_id=OBJECT_ID
+            )
+            file_size = len(obj.content)
+            await s3_fixture.populate_file_objects([obj])
+            yield EncryptedDataFixture(
+                checksum=checksum,
+                file_secret=file_secret,
+                file_size=file_size,
+                offset=offset,
+                s3_fixture=s3_fixture,
+            )

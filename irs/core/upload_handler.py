@@ -135,10 +135,11 @@ async def compute_checksums(  # pylint: disable=too-many-locals
     # buffers to account for non part/cipher segment size aligned blocks
     incomplete_part_buffer = bytearray()
     partial_chunk = b""
+
     async for part in retrieve_parts(
         url=download_url, object_size=object_size, offset=offset
     ):
-
+        part = await part
         if partial_chunk:
             part = partial_chunk + part
         chunks, incomplete_chunk = make_chunks(file_part=part)
@@ -155,16 +156,24 @@ async def compute_checksums(  # pylint: disable=too-many-locals
                 encrypted_sha256_part_checksums.append(sha256sum)
                 incomplete_part_buffer = incomplete_part_buffer[PART_SIZE:]
 
-            decrypted = decrypt_block(ciphersegment=part, session_keys=[secret])
+            decrypted = decrypt_block(ciphersegment=chunk, session_keys=[secret])
             total_sha256_checksum.update(decrypted)
 
-        if partial_chunk:
-            raise exceptions.UnprocessedBytesError(chunk_length=len(partial_chunk))
-        # Compute checksum for last part
-        if len(incomplete_part_buffer):
-            md5sum, sha256sum = get_part_checksums(file_part=file_part)
-            encrypted_md5_part_checksums.append(md5sum)
-            encrypted_sha256_part_checksums.append(sha256sum)
+    # process remaining data
+    incomplete_part_buffer.extend(partial_chunk)
+    part = bytes(incomplete_part_buffer)
+
+    if part:
+        md5sum, sha256sum = get_part_checksums(file_part=part)
+        encrypted_md5_part_checksums.append(md5sum)
+        encrypted_sha256_part_checksums.append(sha256sum)
+
+        chunks, incomplete_chunk = make_chunks(file_part=part)
+        if incomplete_chunk:
+            raise exceptions.UnprocessedBytesError(chunk_length=len(incomplete_chunk))
+        for chunk in chunks:
+            decrypted = decrypt_block(ciphersegment=chunk, session_keys=[secret])
+            total_sha256_checksum.update(decrypted)
 
     return (
         encrypted_md5_part_checksums,
