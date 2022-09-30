@@ -15,5 +15,45 @@
 """Service specific exceptions"""
 
 
+class BadResponseCodeError(RuntimeError):
+    """Thrown, when a request returns an unexpected response code (e.g. 500)"""
+
+    def __init__(self, *, url: str, response_code: int):
+        self.response_code = response_code
+        message = f"The request to {url} failed with response code {response_code}"
+        super().__init__(message)
+
+
+class EnvelopeDecryptionError(RuntimeError):
+    """
+    Thrown when the encryption key store could not decrypt the envelope with the provided
+    keypairs
+    """
+
+    def __init__(self):
+        message = ""
+        super().__init__(message)
+
+
+class MalformedOrMissingEnvelope(RuntimeError):
+    """Thrown when the when the encryption key store could not find a valid envelope"""
+
+    def __init__(self):
+        message = ""
+        super().__init__(message)
+
+
+class RequestFailedError(RuntimeError):
+    """Thrown when a request fails without returning a response code"""
+
+    def __init__(self, *, url: str):
+        message = f"The request to {url} failed."
+        super().__init__(message)
+
+
 class UnprocessedBytesError(RuntimeError):
     """Raised when a byte chunk remains after processing all file parts"""
+
+    def __init__(self, *, chunk_length: int):
+        message = f"{chunk_length} unprocessed bytes encountered at at the file end"
+        super().__init__(message)

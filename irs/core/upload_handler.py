@@ -30,7 +30,8 @@ from irs.adapters.outbound.kafka_producer import (
     UploadValidationSuccessEvent,
 )
 from irs.config import CONFIG
-from irs.core.exceptions import UnprocessedBytesError
+from irs.core import exceptions
+from irs.core.http_translation import ResponseExceptionTranslator
 
 PART_SIZE = 16 * 1024**2
 
@@ -96,13 +97,22 @@ async def send_to_eks(*, file_part: bytes, eks_url: str) -> Tuple[bytes, str, in
     """Get encryption secret and file content offset from envelope"""
     data = base64.b64encode(file_part).hex()
     request_body = {"user_id": "", "file_part": data}
-    # implement handling of connection issues
-    response = requests.post(url=eks_url, json=request_body, timeout=60)
+    try:
+        response = requests.post(url=eks_url, json=request_body, timeout=60)
+    except requests.exceptions.RequestException as request_error:
+        raise exceptions.RequestFailedError(url=eks_url) from request_error
 
     status_code = response.status_code
     # implement httpyexpect error conversion
     if status_code != 200:
-        ...
+        spec = {
+            400: {
+                "malformedOrMissingEnvelopeError": exceptions.MalformedOrMissingEnvelope()
+            },
+            403: {"envelopeDecryptionError": exceptions.EnvelopeDecryptionError()},
+        }
+        ResponseExceptionTranslator(spec=spec).handle(response=response)
+        raise exceptions.BadResponseCodeError(url=eks_url, response_code=status_code)
 
     body = response.json()
     secret = base64.b64decode(codecs.decode(body["secret"], "hex"))
@@ -147,9 +157,7 @@ async def compute_checksums(  # pylint: disable=too-many-locals
             total_sha256_checksum.update(decrypted)
 
         if partial_chunk:
-            raise UnprocessedBytesError(
-                f"{len(partial_chunk)} unprocessed bytes encountered at at the file end"
-            )
+            raise exceptions.UnprocessedBytesError(chunk_length=len(partial_chunk))
         # Compute checksum for last part
         if len(incomplete_part_buffer):
             md5sum, sha256sum = get_part_checksums(file_part=file_part)
@@ -171,10 +179,14 @@ async def retrieve_parts(*, url: str, object_size: int, offset: int = 0):
 
 
 async def retrieve_part(*, url: str, start: int, stop: int):
-    """Get one part from inbo by range"""
-    response = requests.get(
-        url=url, headers={"Range": f"bytes={start}-{stop}"}, timeout=60
-    )
+    """Get one part from inbox by range"""
+    try:
+        response = requests.get(
+            url=url, headers={"Range": f"bytes={start}-{stop}"}, timeout=60
+        )
+    except requests.exceptions.RequestException as request_error:
+        raise exceptions.RequestFailedError(url=url) from request_error
+
     return response.content
 
 

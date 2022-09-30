@@ -13,31 +13,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """ """
-import sys
-
 import pytest
-import pytest_asyncio
 from crypt4gh.lib import CIPHER_SEGMENT_SIZE
-from ghga_service_chassis_lib.utils import big_temp_file
 from hexkit.providers.s3.testutils import s3_fixture  # noqa: F401
-from hexkit.providers.s3.testutils import FileObject, S3Fixture
+from hexkit.providers.s3.testutils import S3Fixture
 
 from irs.core.upload_handler import make_chunks, retrieve_part, retrieve_parts
 
-BUCKET_ID = "test"
-OBJECT_ID = "random-data"
-FILE_SIZE = 50 * 1024**2
-PART_SIZE = 16 * 1024**2
-
-
-@pytest_asyncio.fixture
-async def prefilled_bucket(s3_fixture: S3Fixture) -> S3Fixture:  # noqa: F811
-    """Fill with one test file"""
-    sys.set_int_max_str_digits(256 * 1024**2)  # type: ignore
-    with big_temp_file(FILE_SIZE) as data:
-        obj = FileObject(file_path=data.name, bucket_id=BUCKET_ID, object_id=OBJECT_ID)
-        await s3_fixture.populate_file_objects([obj])
-        yield s3_fixture
+from .fixtures.file_fixtures import BUCKET_ID, FILE_SIZE, OBJECT_ID, PART_SIZE
 
 
 @pytest.mark.asyncio

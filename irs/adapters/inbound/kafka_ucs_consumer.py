@@ -26,18 +26,14 @@ from irs.core.upload_handler import process_new_upload
 
 class FileUploadCompletedEvent(BaseModel):
     """
-    Details for incoming file_upload_completed event from ucs - declare unused fields
-    as optional until we integrate with UCS
+    Details for incoming file_upload_completed event from ucs - remove unused fields
+    until we integrate with UCS
     """
 
-    creation_date: Optional[str] = Field(alias="creation-date")
     file_id: str = Field(..., alias="file-id")
-    format: Optional[str]
     grouping_label: Optional[str] = Field(alias="grouping-label")
     sha256_checksum: str = Field(..., alias="sha256-checksum")
     size: int
-    timestamp: Optional[str]
-    update_date: Optional[str] = Field(alias="update-date")
 
     class Config:
         """Needed config to allow popupalation by non-alias name"""

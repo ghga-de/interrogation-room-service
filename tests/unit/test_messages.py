@@ -29,8 +29,6 @@ async def test_incoming_message(
     kafka_fixture: KafkaFixture,  # noqa: F811
     event_fixture: Dict[str, Union[object, str]],  # noqa: F811
 ):
-    """ """
-    print(kafka_fixture.publisher)
-    print(kafka_fixture.subscriber)
+    """Start"""
     await kafka_fixture.publisher.publish(**event_fixture)
     await kafka_fixture.subscriber.run(forever=False)
