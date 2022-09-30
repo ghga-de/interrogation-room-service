@@ -124,7 +124,7 @@ async def send_to_eks(
     return secret, secret_id, offset
 
 
-async def compute_checksums(  # pylint: disable=too-many-locals
+async def compute_checksums(
     *, download_url: str, secret: bytes, object_size: int, offset: int
 ) -> Tuple[Tuple[List[str], List[str]], str]:
     """Compute total unencrypted file checksum and encrypted part checksums"""
@@ -133,47 +133,29 @@ async def compute_checksums(  # pylint: disable=too-many-locals
     encrypted_sha256_part_checksums = []
 
     # buffers to account for non part/cipher segment size aligned blocks
-    incomplete_part_buffer = bytearray()
     partial_chunk = b""
 
     async for part in retrieve_parts(
         url=download_url, object_size=object_size, offset=offset
     ):
         part = await part
+        md5sum, sha256sum = get_part_checksums(file_part=part)
+        encrypted_md5_part_checksums.append(md5sum)
+        encrypted_sha256_part_checksums.append(sha256sum)
+
         if partial_chunk:
             part = partial_chunk + part
         chunks, incomplete_chunk = make_chunks(file_part=part)
         partial_chunk = incomplete_chunk
 
         for chunk in chunks:
-            incomplete_part_buffer.extend(chunk)
-
-            # compute part checksum, when we reach the actual part size
-            if len(incomplete_part_buffer) >= PART_SIZE:
-                file_part = incomplete_part_buffer[:PART_SIZE]
-                md5sum, sha256sum = get_part_checksums(file_part=file_part)
-                encrypted_md5_part_checksums.append(md5sum)
-                encrypted_sha256_part_checksums.append(sha256sum)
-                incomplete_part_buffer = incomplete_part_buffer[PART_SIZE:]
-
             decrypted = decrypt_block(ciphersegment=chunk, session_keys=[secret])
             total_sha256_checksum.update(decrypted)
 
     # process remaining data
-    incomplete_part_buffer.extend(partial_chunk)
-    part = bytes(incomplete_part_buffer)
-
-    if part:
-        md5sum, sha256sum = get_part_checksums(file_part=part)
-        encrypted_md5_part_checksums.append(md5sum)
-        encrypted_sha256_part_checksums.append(sha256sum)
-
-        chunks, incomplete_chunk = make_chunks(file_part=part)
-        if incomplete_chunk:
-            raise exceptions.UnprocessedBytesError(chunk_length=len(incomplete_chunk))
-        for chunk in chunks:
-            decrypted = decrypt_block(ciphersegment=chunk, session_keys=[secret])
-            total_sha256_checksum.update(decrypted)
+    if incomplete_chunk:
+        decrypted = decrypt_block(ciphersegment=incomplete_chunk, session_keys=[secret])
+        total_sha256_checksum.update(decrypted)
 
     return (
         encrypted_md5_part_checksums,
@@ -223,7 +205,6 @@ def calc_part_ranges(
         part_ranges.append(
             (byte_offset + part_size * full_part_number, object_size - 1)
         )
-
     return part_ranges
 
 
@@ -232,6 +213,7 @@ def make_chunks(*, file_part: bytes) -> Tuple[List[bytes], bytes]:
 
     num_chunks = len(file_part) / CIPHER_SEGMENT_SIZE
     full_chunks = int(num_chunks)
+    print(num_chunks)
     chunks = [
         file_part[i * CIPHER_SEGMENT_SIZE : (i + 1) * CIPHER_SEGMENT_SIZE]
         for i in range(full_chunks)
