@@ -12,6 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import os
 from dataclasses import dataclass
 from pathlib import Path
 from tempfile import mkstemp
@@ -38,9 +39,12 @@ async def generate_keypair_fixture() -> AsyncGenerator[KeypairFixture, None]:
     sk_file, sk_path = mkstemp(prefix="private", suffix=".key")
     pk_file, pk_path = mkstemp(prefix="public", suffix=".key")
 
+    # Crypt4GH does not reset the umask it sets, so we need to deal with it
+    original_umask = os.umask(0o022)
     generate_keypair(seckey=sk_file, pubkey=pk_file)
     public_key = get_public_key(pk_path)
     private_key = get_private_key(sk_path, lambda: None)
+    os.umask(original_umask)
 
     Path(pk_path).unlink()
     Path(sk_path).unlink()

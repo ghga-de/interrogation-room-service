@@ -55,31 +55,30 @@ class SubscriberTestProtocol(EventSubscriberProtocol):
         assert payload["sha256_checksum"] == "456"
 
 
-@pytest_asyncio.fixture
-async def event_fixture() -> AsyncGenerator[Mapping[str, Collection[str]], None]:
-    """ """
-    data = FileUploadCompletedEvent(
-        file_id="123", public_key="shashashasha", sha256_checksum="456", size=100
-    )
-    type_ = "test_type"
-    key = "test_key"
-    topic = "test_topic"
-    print(data)
-    event = {"payload": data.dict(), "type_": type_, "key": key, "topic": topic}
-    yield event
-
-
 @dataclass
 class KafkaFixture:
-    """ """
+    """Storing configured publisher/subscriber pair for Kafka"""
 
     publisher: KafkaEventPublisher
     subscriber: KafkaEventSubscriber
 
 
 @pytest_asyncio.fixture
+async def event_fixture() -> AsyncGenerator[Mapping[str, Collection[str]], None]:
+    """Generate test event for sanity check"""
+    data = FileUploadCompletedEvent(
+        file_id="123", public_key="shashashasha", sha256_checksum="456", size=100
+    )
+    type_ = "test_type"
+    key = "test_key"
+    topic = "test_topic"
+    event = {"payload": data.dict(), "type_": type_, "key": key, "topic": topic}
+    yield event
+
+
+@pytest_asyncio.fixture
 async def kafka_fixture():
-    """ """
+    """Configure Kafka subscriber/publisher"""
     with KafkaContainer() as kafka_container:
         kafka_server = kafka_container.get_bootstrap_server()
         print(kafka_server)

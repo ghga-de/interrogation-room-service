@@ -39,7 +39,7 @@ sys.set_int_max_str_digits(256 * 1024**2)  # type: ignore
 
 @dataclass
 class EncryptedDataFixture:
-    """ """
+    """Object metadata for testing purposes"""
 
     checksum: str
     file_secret: bytes
