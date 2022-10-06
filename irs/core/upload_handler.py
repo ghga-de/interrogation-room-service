@@ -14,24 +14,24 @@
 # limitations under the License.
 """Core interrogation room logic called by event subscriber"""
 
-import base64
-import codecs
 import hashlib
 import math
-from typing import List, Sequence, Tuple
+from typing import List, Tuple
 
-import requests
-from crypt4gh.lib import CIPHER_SEGMENT_SIZE, decrypt_block
-from hexkit.providers.akafka import KafkaEventPublisher
-from hexkit.providers.s3.provider import S3Config, S3ObjectStorage
+from crypt4gh.lib import CIPHER_SEGMENT_SIZE, CryptoError, decrypt_block
 
+from irs.adapters.http.api_calls import call_eks_api
+from irs.adapters.http.exceptions import KnownError
+from irs.adapters.inbound.s3_download import (
+    get_download_url,
+    retrieve_part,
+    retrieve_parts,
+)
 from irs.adapters.outbound.kafka_producer import (
-    UploadValidationFailureEvent,
-    UploadValidationSuccessEvent,
+    produce_failure_event,
+    produce_success_event,
 )
 from irs.config import CONFIG
-from irs.core import exceptions
-from irs.core.http_translation import ResponseExceptionTranslator
 
 PART_SIZE = 16 * 1024**2
 
@@ -43,84 +43,38 @@ async def process_new_upload(  # pylint: disable=too-many-locals
     Forwards first file part to encryption key store, retrieves file encryption
     secret(s) (K_data), decrypts file and computes checksums
     """
-    download_url = await get_download_url(object_id=object_id)
-    part = await retrieve_part(url=download_url, start=0, stop=PART_SIZE - 1)
-
-    secret, secret_id, offset = await open_envelope(
-        file_part=part, public_key=public_key, eks_url=CONFIG.eks_url
-    )
-    part_checksums_md5, part_checksums_sha256, total_checksum = await compute_checksums(
-        download_url=download_url,
-        secret=secret,
-        object_size=object_size,
-        offset=offset,
-    )
-
-    type_ = "irs_publisher"
-    key = "irs"
-    async with KafkaEventPublisher.construct(config=CONFIG) as publisher:
-        if total_checksum == checksum:
-            topic = "upload_validation_success"
-            data = UploadValidationSuccessEvent(
-                content_id=total_checksum,
-                secret_id=secret_id,
-                offset=offset,
-                part_size=PART_SIZE,
-                part_checksums_md5=part_checksums_md5,
-                part_checksums_sha256=part_checksums_sha256,
-            ).dict()
-        else:
-            topic = "upload_validation_failure"
-            # implement exception handling, get cause from exception
-            data = UploadValidationFailureEvent(
-                file_id=object_id, cause="Checksum mismatch"
-            ).dict()
-        publisher.publish(paylod=data, type_=type_, key=key, topic=topic)
-
-
-async def get_download_url(*, object_id: str):
-    """Get object download URL frome"""
-    config = S3Config(
-        s3_endpoint_url=CONFIG.s3_endpoint_url,
-        s3_access_key_id=CONFIG.s3_access_key_id,
-        s3_secret_access_key=CONFIG.s3_secret_access_key,
-    )
-    storage = S3ObjectStorage(config=config)
-
-    return storage.get_object_download_url(
-        bucket_id=CONFIG.bucket_id, object_id=object_id
-    )
-
-
-async def open_envelope(
-    *, file_part: bytes, public_key: str, eks_url: str
-) -> Tuple[bytes, str, int]:
-    """Get encryption secret and file content offset from envelope"""
-    data = base64.b64encode(file_part).hex()
-    request_body = {"public_key": public_key, "file_part": data}
     try:
-        response = requests.post(url=eks_url, json=request_body, timeout=60)
-    except requests.exceptions.RequestException as request_error:
-        raise exceptions.RequestFailedError(url=eks_url) from request_error
+        download_url = await get_download_url(object_id=object_id)
+        part = await retrieve_part(url=download_url, start=0, stop=PART_SIZE - 1)
+        secret, secret_id, offset = call_eks_api(
+            file_part=part, public_key=public_key, api_url=CONFIG.eks_url
+        )
+        (
+            part_checksums_md5,
+            part_checksums_sha256,
+            content_checksum_sha256,
+        ) = await compute_checksums(
+            download_url=download_url,
+            secret=secret,
+            object_size=object_size,
+            offset=offset,
+        )
+    except (CryptoError, KnownError, ValueError) as exc:
+        await produce_failure_event(file_id=object_id, cause=str(exc))
+        return
 
-    status_code = response.status_code
-    # implement httpyexpect error conversion
-    if status_code != 200:
-        spec = {
-            400: {
-                "malformedOrMissingEnvelopeError": exceptions.MalformedOrMissingEnvelope()
-            },
-            403: {"envelopeDecryptionError": exceptions.EnvelopeDecryptionError()},
-        }
-        ResponseExceptionTranslator(spec=spec).handle(response=response)
-        raise exceptions.BadResponseCodeError(url=eks_url, response_code=status_code)
-
-    body = response.json()
-    secret = base64.b64decode(codecs.decode(body["secret"], "hex"))
-    secret_id = body["secret_id"]
-    offset = body["offset"]
-
-    return secret, secret_id, offset
+    if checksum == content_checksum_sha256:
+        await produce_success_event(
+            file_id=object_id,
+            secret_id=secret_id,
+            offset=offset,
+            part_size=PART_SIZE,
+            part_checksums_sha256=part_checksums_sha256,
+            part_checksums_md5=part_checksums_md5,
+            content_checksum_sha256=content_checksum_sha256,
+        )
+    else:
+        await produce_failure_event(file_id=object_id)
 
 
 async def compute_checksums(
@@ -135,9 +89,8 @@ async def compute_checksums(
     partial_ciphersegment = b""
 
     async for part in retrieve_parts(
-        url=download_url, object_size=object_size, offset=offset
+        url=download_url, object_size=object_size, part_size=PART_SIZE, offset=offset
     ):
-        part = await part
         md5sum, sha256sum = get_part_checksums(file_part=part)
         encrypted_md5_part_checksums.append(md5sum)
         encrypted_sha256_part_checksums.append(sha256sum)
@@ -165,51 +118,6 @@ async def compute_checksums(
         encrypted_sha256_part_checksums,
         total_sha256_checksum.hexdigest(),
     )
-
-
-async def retrieve_parts(*, url: str, object_size: int, offset: int = 0):
-    """Get all parts from inbox, starting with file content at offset"""
-    for start, stop in calc_part_ranges(
-        part_size=PART_SIZE, object_size=object_size, byte_offset=offset
-    ):
-        yield retrieve_part(url=url, start=start, stop=stop)
-
-
-async def retrieve_part(*, url: str, start: int, stop: int):
-    """Get one part from inbox by range"""
-    try:
-        response = requests.get(
-            url=url, headers={"Range": f"bytes={start}-{stop}"}, timeout=60
-        )
-    except requests.exceptions.RequestException as request_error:
-        raise exceptions.RequestFailedError(url=url) from request_error
-
-    return response.content
-
-
-def calc_part_ranges(
-    *, part_size: int, object_size: int, byte_offset: int
-) -> Sequence[tuple[int, int]]:
-    """
-    Calculate and return the ranges (start, end) of file parts as a list of tuples.
-    """
-    # calc the ranges for the parts that have the full part_size:
-    full_part_number = math.floor(object_size / part_size)
-
-    part_ranges = [
-        (
-            byte_offset + part_size * (part_no - 1),
-            byte_offset + part_size * (part_no) - 1,
-        )
-        for part_no in range(1, full_part_number + 1)
-    ]
-
-    if (object_size % part_size) > 0:
-        # if the last part is smaller than the part_size, calculate it range separately:
-        part_ranges.append(
-            (byte_offset + part_size * full_part_number, object_size - 1)
-        )
-    return part_ranges
 
 
 def get_segments(*, file_part: bytes) -> Tuple[List[bytes], bytes]:

@@ -15,7 +15,11 @@
 """Service specific exceptions"""
 
 
-class BadResponseCodeError(RuntimeError):
+class KnownError(RuntimeError):
+    """Base class for custom errors encountered"""
+
+
+class BadResponseCodeError(KnownError):
     """Thrown, when a request returns an unexpected response code (e.g. 500)"""
 
     def __init__(self, *, url: str, response_code: int):
@@ -24,7 +28,7 @@ class BadResponseCodeError(RuntimeError):
         super().__init__(message)
 
 
-class EnvelopeDecryptionError(RuntimeError):
+class EnvelopeDecryptionError(KnownError):
     """
     Thrown when the encryption key store could not decrypt the envelope with the provided
     keypairs
@@ -35,7 +39,7 @@ class EnvelopeDecryptionError(RuntimeError):
         super().__init__(message)
 
 
-class MalformedOrMissingEnvelope(RuntimeError):
+class MalformedOrMissingEnvelope(KnownError):
     """Thrown when the when the encryption key store could not find a valid envelope"""
 
     def __init__(self):
@@ -43,7 +47,7 @@ class MalformedOrMissingEnvelope(RuntimeError):
         super().__init__(message)
 
 
-class RequestFailedError(RuntimeError):
+class RequestFailedError(KnownError):
     """Thrown when a request fails without returning a response code"""
 
     def __init__(self, *, url: str):
@@ -51,7 +55,7 @@ class RequestFailedError(RuntimeError):
         super().__init__(message)
 
 
-class UnprocessedBytesError(RuntimeError):
+class UnprocessedBytesError(KnownError):
     """Raised when a byte chunk remains after processing all file parts"""
 
     def __init__(self, *, chunk_length: int):

@@ -49,10 +49,8 @@ async def test_retrieve_parts(prefilled_random_data: S3Fixture):  # noqa: F811
         bucket_id=BUCKET_ID, object_id=OBJECT_ID
     )
     async for part in retrieve_parts(
-        url=download_url,
-        object_size=FILE_SIZE,
+        url=download_url, object_size=FILE_SIZE, part_size=PART_SIZE
     ):
-        part = await part
         part_sizes.append(len(part))
     for size in part_sizes[:-1]:
         assert size == PART_SIZE

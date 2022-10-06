@@ -80,12 +80,12 @@
         "type": "string"
       }
     },
-    "bucket_id": {
-      "title": "Bucket Id",
+    "inbox_bucket": {
+      "title": "Inbox Bucket",
       "description": "Bucket ID representing the inbox.",
       "example": "inbox",
       "env_names": [
-        "irs_bucket_id"
+        "irs_inbox_bucket"
       ],
       "type": "string"
     },
@@ -97,6 +97,15 @@
         "irs_eks_url"
       ],
       "type": "string"
+    },
+    "topic": {
+      "title": "Topic",
+      "description": "Topic for Kafka events published by this service",
+      "default": "file_interrogation",
+      "env_names": [
+        "irs_topic"
+      ],
+      "type": "string"
     }
   },
   "required": [
@@ -105,7 +114,7 @@
     "s3_secret_access_key",
     "service_instance_id",
     "kafka_servers",
-    "bucket_id",
+    "inbox_bucket",
     "eks_url"
   ],
   "additionalProperties": false

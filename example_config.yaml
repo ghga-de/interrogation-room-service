@@ -1,6 +1,6 @@
 aws_config_ini: null
-bucket_id: inbox
 eks_url: http://127.0.0.1/eks
+inbox_bucket: inbox
 kafka_servers:
 - localhost:9092
 s3_access_key_id: test
@@ -9,3 +9,4 @@ s3_secret_access_key: test
 s3_session_token: null
 service_instance_id: interrogation_room-001
 service_name: interrogation_room
+topic: file_interrogation

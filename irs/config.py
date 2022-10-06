@@ -26,13 +26,17 @@ class Config(KafkaConfig, S3ConfigBase):
     """Config parameters and their defaults."""
 
     service_name: str = "interrogation_room"
-    bucket_id: str = Field(
+    inbox_bucket: str = Field(
         ..., example="inbox", description=("Bucket ID representing the inbox.")
     )
     eks_url: str = Field(
         ...,
         example="http://127.0.0.1/eks",
         description=("URL pointing to the Encryption Key Store service."),
+    )
+    topic: str = Field(
+        "file_interrogation",
+        description=("Topic for Kafka events published by this service"),
     )
 
 

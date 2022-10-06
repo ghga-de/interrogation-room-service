@@ -14,7 +14,6 @@
 # limitations under the License.
 """KafkaEventSubscriber receiving events from UCS and validating file uploads"""
 
-import logging
 from typing import Optional
 
 from hexkit.custom_types import Ascii, JsonObject
@@ -51,7 +50,7 @@ class UploadTaskReceiver(EventSubscriberProtocol):
     topics_of_interest: list[Ascii] = ["file_upload_received"]
     types_of_interest: list[Ascii] = ["ucs"]
 
-    async def _consume_validated(
+    async def _consume_validated(  # pylint: disable=unused-argument,no-self-use
         self, *, payload: JsonObject, type_: Ascii, topic: Ascii
     ) -> None:
         """
@@ -62,23 +61,14 @@ class UploadTaskReceiver(EventSubscriberProtocol):
             type_ (str): The type of the event.
             topic (str): Name of the topic the event was published to.
         """
-        if type_ not in self.types_of_interest:
-            logging.warning(
-                "Type '%s' not in types of interest. Skipping event.", type_
-            )
-        elif topic not in self.topics_of_interest:
-            logging.warning(
-                "Topic '%s' not in topics of interest. Skipping event.", topic
-            )
-        else:
-            object_id = payload["file-id"]
-            object_size = payload["size"]
-            public_key = payload["public-key"]
-            # do we need to handle grouping label for prefixes in inbox?
-            checksum = payload["sha256-checksum"]
-            await process_new_upload(
-                object_id=object_id,
-                object_size=object_size,
-                public_key=public_key,
-                checksum=checksum,
-            )
+        object_id = payload["file-id"]
+        object_size = payload["size"]
+        public_key = payload["public-key"]
+        # do we need to handle grouping label for prefixes in inbox?
+        checksum = payload["sha256-checksum"]
+        await process_new_upload(
+            object_id=object_id,
+            object_size=object_size,
+            public_key=public_key,
+            checksum=checksum,
+        )
