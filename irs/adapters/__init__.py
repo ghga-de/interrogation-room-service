@@ -12,20 +12,4 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-"""Config Parameter Modeling and Parsing"""
-
-from ghga_service_chassis_lib.api import ApiConfigBase
-from ghga_service_chassis_lib.config import config_from_yaml
-from ghga_service_chassis_lib.pubsub import PubSubConfigBase
-from ghga_service_chassis_lib.s3 import S3ConfigBase
-
-
-@config_from_yaml(prefix="interrogation_room")
-class Config(ApiConfigBase, PubSubConfigBase, S3ConfigBase):
-    """Config parameters and their defaults."""
-
-    service_name: str = "interrogation_room"
-
-
-CONFIG = Config()
+"""Contains adapters/ports for service specific kafka subscribers/publishers"""

@@ -1,7 +1,10 @@
 # Please only mention the non-default settings here:
 
-rabbitmq_host: rabbitmq
-rabbitmq_port: 5672
-s3_endpoint_url: http://localstack:4566
+inbox_bucket: inbox
+eks_url: http://127.0.0.1/eks
+kafka_servers:
+  - localhost:9092
+service_instance_id: interrogation_room-001
+s3_endpoint_url: "http://localstack:4566"
 s3_access_key_id: test
 s3_secret_access_key: test

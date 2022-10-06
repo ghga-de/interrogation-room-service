@@ -1,5 +1,5 @@
 ![tests](https://github.com/ghga-de/interrogation-room-service/actions/workflows/unit_and_int_tests.yaml/badge.svg)
-[![Coverage Status](https://coveralls.io/repos/github/ghga-de/interrogation-room-service/badge.svg?branch=main)](https://coveralls.io/github/ghga-de/interrogtion-room-service?branch=main)
+[![Coverage Status](https://coveralls.io/repos/github/ghga-de/interrogation-room-service/badge.svg?branch=main)](https://coveralls.io/github/ghga-de/interrogation-room-service?branch=main)
 # Interrogation Room Service
 
 The Interrogation Room Service (IRS) interfaces with the Encryption Key Store Service to process Crypt4GH encrypted files uploaded to the inbox of a local GHGA node.
