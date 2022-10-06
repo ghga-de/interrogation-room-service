@@ -42,7 +42,7 @@ class FileUploadCompletedEvent(BaseModel):
         allow_population_by_field_name = True
 
 
-class UcsUploadedProtocol(EventSubscriberProtocol):
+class UploadTaskReceiver(EventSubscriberProtocol):
     """
     EventSubscriber Implementation processing relevant information from UCS
     file_upload_completed event

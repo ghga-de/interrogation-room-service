@@ -21,7 +21,7 @@ from hexkit.providers.s3.testutils import S3Fixture
 
 from irs.core.upload_handler import (
     compute_checksums,
-    make_chunks,
+    get_segments,
     retrieve_part,
     retrieve_parts,
 )
@@ -66,7 +66,7 @@ async def test_make_chunks(prefilled_random_data: S3Fixture):  # noqa: F811
         bucket_id=BUCKET_ID, object_id=OBJECT_ID
     )
     part = await retrieve_part(url=download_url, start=0, stop=PART_SIZE - 1)
-    chunks, incomplete_chunk = make_chunks(file_part=part)
+    chunks, incomplete_chunk = get_segments(file_part=part)
     assert len(chunks) == int(NUM_CHUNKS)
     for chunk in chunks:
         assert len(chunk) == CIPHER_SEGMENT_SIZE
@@ -85,7 +85,7 @@ async def test_checksums(encrypted_random_data: EncryptedDataFixture):  # noqa: 
             bucket_id=BUCKET_ID, object_id=OBJECT_ID
         )
     )
-    _, computed_checksum = await compute_checksums(
+    _, _, computed_checksum = await compute_checksums(
         download_url=download_url,
         secret=file_secret,
         object_size=object_size,

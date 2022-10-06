@@ -15,7 +15,6 @@
 
 """Config Parameter Modeling and Parsing"""
 
-from ghga_service_chassis_lib.api import ApiConfigBase
 from ghga_service_chassis_lib.config import config_from_yaml
 from ghga_service_chassis_lib.s3 import S3ConfigBase
 from hexkit.providers.akafka import KafkaConfig
@@ -23,7 +22,7 @@ from pydantic import Field
 
 
 @config_from_yaml(prefix="irs")
-class Config(ApiConfigBase, KafkaConfig, S3ConfigBase):
+class Config(KafkaConfig, S3ConfigBase):
     """Config parameters and their defaults."""
 
     service_name: str = "interrogation_room"

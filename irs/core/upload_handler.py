@@ -46,10 +46,10 @@ async def process_new_upload(  # pylint: disable=too-many-locals
     download_url = await get_download_url(object_id=object_id)
     part = await retrieve_part(url=download_url, start=0, stop=PART_SIZE - 1)
 
-    secret, secret_id, offset = await send_to_eks(
+    secret, secret_id, offset = await open_envelope(
         file_part=part, public_key=public_key, eks_url=CONFIG.eks_url
     )
-    part_checksums, total_checksum = await compute_checksums(
+    part_checksums_md5, part_checksums_sha256, total_checksum = await compute_checksums(
         download_url=download_url,
         secret=secret,
         object_size=object_size,
@@ -66,8 +66,8 @@ async def process_new_upload(  # pylint: disable=too-many-locals
                 secret_id=secret_id,
                 offset=offset,
                 part_size=PART_SIZE,
-                part_checksums_md5=part_checksums[0],
-                part_checksums_sha256=part_checksums[1],
+                part_checksums_md5=part_checksums_md5,
+                part_checksums_sha256=part_checksums_sha256,
             ).dict()
         else:
             topic = "upload_validation_failure"
@@ -92,7 +92,7 @@ async def get_download_url(*, object_id: str):
     )
 
 
-async def send_to_eks(
+async def open_envelope(
     *, file_part: bytes, public_key: str, eks_url: str
 ) -> Tuple[bytes, str, int]:
     """Get encryption secret and file content offset from envelope"""
@@ -125,14 +125,14 @@ async def send_to_eks(
 
 async def compute_checksums(
     *, download_url: str, secret: bytes, object_size: int, offset: int
-) -> Tuple[Tuple[List[str], List[str]], str]:
+) -> Tuple[List[str], List[str], str]:
     """Compute total unencrypted file checksum and encrypted part checksums"""
     total_sha256_checksum = hashlib.sha256()
     encrypted_md5_part_checksums = []
     encrypted_sha256_part_checksums = []
 
     # buffers to account for non part/cipher segment size aligned blocks
-    partial_chunk = b""
+    partial_ciphersegment = b""
 
     async for part in retrieve_parts(
         url=download_url, object_size=object_size, offset=offset
@@ -142,24 +142,29 @@ async def compute_checksums(
         encrypted_md5_part_checksums.append(md5sum)
         encrypted_sha256_part_checksums.append(sha256sum)
 
-        if partial_chunk:
-            part = partial_chunk + part
-        chunks, incomplete_chunk = make_chunks(file_part=part)
-        partial_chunk = incomplete_chunk
+        if partial_ciphersegment:
+            part = partial_ciphersegment + part
+        ciphersegments, incomplete_ciphersegment = get_segments(file_part=part)
+        partial_ciphersegment = incomplete_ciphersegment
 
-        for chunk in chunks:
-            decrypted = decrypt_block(ciphersegment=chunk, session_keys=[secret])
+        for ciphersegment in ciphersegments:
+            decrypted = decrypt_block(
+                ciphersegment=ciphersegment, session_keys=[secret]
+            )
             total_sha256_checksum.update(decrypted)
 
     # process remaining data
-    if incomplete_chunk:
-        decrypted = decrypt_block(ciphersegment=incomplete_chunk, session_keys=[secret])
+    if incomplete_ciphersegment:
+        decrypted = decrypt_block(
+            ciphersegment=incomplete_ciphersegment, session_keys=[secret]
+        )
         total_sha256_checksum.update(decrypted)
 
     return (
         encrypted_md5_part_checksums,
         encrypted_sha256_part_checksums,
-    ), total_sha256_checksum.hexdigest()
+        total_sha256_checksum.hexdigest(),
+    )
 
 
 async def retrieve_parts(*, url: str, object_size: int, offset: int = 0):
@@ -207,24 +212,24 @@ def calc_part_ranges(
     return part_ranges
 
 
-def make_chunks(*, file_part: bytes) -> Tuple[List[bytes], bytes]:
-    """Chunk file part into decryptable chunks"""
+def get_segments(*, file_part: bytes) -> Tuple[List[bytes], bytes]:
+    """Chunk file part into decryptable segments"""
 
-    num_chunks = len(file_part) / CIPHER_SEGMENT_SIZE
-    full_chunks = int(num_chunks)
-    print(num_chunks)
-    chunks = [
+    num_segments = len(file_part) / CIPHER_SEGMENT_SIZE
+    full_segments = int(num_segments)
+    print(num_segments)
+    segments = [
         file_part[i * CIPHER_SEGMENT_SIZE : (i + 1) * CIPHER_SEGMENT_SIZE]
-        for i in range(full_chunks)
+        for i in range(full_segments)
     ]
 
     # check if we have a remainder of bytes that we need to handle,
     # i.e. non-matching boundaries between part and cipher segment size
-    incomplete_chunk = b""
-    partial_chunk_idx = math.ceil(num_chunks)
-    if partial_chunk_idx != full_chunks:
-        incomplete_chunk = file_part[full_chunks * CIPHER_SEGMENT_SIZE :]
-    return chunks, incomplete_chunk
+    incomplete_segment = b""
+    partial_segment_idx = math.ceil(num_segments)
+    if partial_segment_idx != full_segments:
+        incomplete_segment = file_part[full_segments * CIPHER_SEGMENT_SIZE :]
+    return segments, incomplete_segment
 
 
 def get_part_checksums(*, file_part: bytes):

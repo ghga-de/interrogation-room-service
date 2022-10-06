@@ -19,7 +19,7 @@ import asyncio
 
 from hexkit.providers.akafka import KafkaEventSubscriber
 
-from irs.adapters.inbound.kafka_ucs_consumer import UcsUploadedProtocol
+from irs.adapters.inbound.kafka_ucs_consumer import UploadTaskReceiver
 
 from .config import CONFIG, Config
 
@@ -27,7 +27,7 @@ from .config import CONFIG, Config
 async def run_subscriber(config: Config = CONFIG):
     """Start the EventSubscriber part of the service"""
     async with KafkaEventSubscriber.construct(
-        config=config, translator=UcsUploadedProtocol()
+        config=config, translator=UploadTaskReceiver()
     ) as subscriber:
         await subscriber.run()
 
