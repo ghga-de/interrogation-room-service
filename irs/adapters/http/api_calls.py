@@ -27,7 +27,7 @@ def call_eks_api(
     *, file_part: bytes, public_key: str, api_url: str
 ) -> Tuple[bytes, str, int]:
     """Call EKS to get encryption secret and file content offset from envelope"""
-    data = base64.b64encode(file_part).decode("utf8")
+    data = base64.b64encode(file_part).decode("utf-8")
     request_body = {"public_key": public_key, "file_part": data}
     try:
         response = requests.post(url=api_url, json=request_body, timeout=60)
