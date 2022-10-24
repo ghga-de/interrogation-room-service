@@ -15,7 +15,6 @@
 """HTTP calls to other service APIs happen here"""
 
 import base64
-import codecs
 from typing import Tuple
 
 import requests
@@ -28,7 +27,7 @@ def call_eks_api(
     *, file_part: bytes, public_key: str, api_url: str
 ) -> Tuple[bytes, str, int]:
     """Call EKS to get encryption secret and file content offset from envelope"""
-    data = base64.b64encode(file_part).hex()
+    data = base64.b64encode(file_part).decode("utf-8")
     request_body = {"public_key": public_key, "file_part": data}
     try:
         response = requests.post(url=api_url, json=request_body, timeout=60)
@@ -48,7 +47,7 @@ def call_eks_api(
         raise exceptions.BadResponseCodeError(url=api_url, response_code=status_code)
 
     body = response.json()
-    secret = base64.b64decode(codecs.decode(body["secret"], "hex"))
+    secret = base64.b64decode(body["secret"])
     secret_id = body["secret_id"]
     offset = body["offset"]
 
