@@ -49,6 +49,11 @@ class UploadValidationFailureEvent(BaseModel):
         allow_population_by_field_name = True
 
 
+async def get_publisher() -> KafkaEventPublisher:
+    """Factoring this out makes it overridable by tests"""
+    return KafkaEventPublisher.construct(config=CONFIG)
+
+
 async def produce_success_event(
     file_id: str,
     secret_id: str,
@@ -59,26 +64,40 @@ async def produce_success_event(
     content_checksum_sha256: str,
 ):  # pylint: disable=too-many-arguments
     """Produce and send an event if checksum validation was successful"""
-    async with KafkaEventPublisher.construct(config=CONFIG) as publisher:
-        type_ = "upload_validation_success"
-        data = UploadValidationSuccessEvent(
-            file_id=file_id,
-            secret_id=secret_id,
-            offset=offset,
-            part_size=part_size,
-            part_checksums_md5=part_checksums_md5,
-            part_checksums_sha256=part_checksums_sha256,
-            content_checksum_sha256=content_checksum_sha256,
-        ).dict()
-        publisher.publish(paylod=data, type_=type_, key=file_id, topic=CONFIG.topic)
+
+    type_ = "upload_validation_success"
+    data = UploadValidationSuccessEvent(
+        file_id=file_id,
+        secret_id=secret_id,
+        offset=offset,
+        part_size=part_size,
+        part_checksums_md5=part_checksums_md5,
+        part_checksums_sha256=part_checksums_sha256,
+        content_checksum_sha256=content_checksum_sha256,
+    ).dict()
+    publisher = await get_publisher()
+    await publisher.publish(
+        payload=data,
+        type_=type_,
+        key=file_id,
+        topic=CONFIG.topic,
+    )
 
 
-async def produce_failure_event(file_id: str, cause: str = "Checksum mismatch"):
+async def produce_failure_event(
+    file_id: str,
+    cause: str = "Checksum mismatch",
+):
     """
     Produce and send an event if checksum validation failed due to mismatch or
     if an exception was encountered
     """
-    async with KafkaEventPublisher.construct(config=CONFIG) as publisher:
-        type_ = "upload_validation_failure"
-        data = UploadValidationFailureEvent(file_id=file_id, cause=cause).dict()
-        publisher.publish(paylod=data, type_=type_, key=file_id, topic=CONFIG.topic)
+    type_ = "upload_validation_failure"
+    data = UploadValidationFailureEvent(file_id=file_id, cause=cause).dict()
+    publisher = await get_publisher()
+    await publisher.publish(
+        payload=data,
+        type_=type_,
+        key=file_id,
+        topic=CONFIG.topic,
+    )

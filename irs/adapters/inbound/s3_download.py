@@ -49,16 +49,20 @@ def calc_part_ranges(
     return part_ranges
 
 
-async def get_download_url(*, object_id: str) -> str:
-    """Get object download URL from S3 inbox bucket"""
+def get_objectstorage() -> S3ObjectStorage:
+    """Factoring this out makes it overridable by tests"""
     config = S3Config(
         s3_endpoint_url=CONFIG.s3_endpoint_url,
         s3_access_key_id=CONFIG.s3_access_key_id,
         s3_secret_access_key=CONFIG.s3_secret_access_key,
     )
-    storage = S3ObjectStorage(config=config)
+    return S3ObjectStorage(config=config)
 
-    return storage.get_object_download_url(
+
+async def get_download_url(*, object_id: str) -> str:
+    """Get object download URL from S3 inbox bucket"""
+    storage = get_objectstorage()
+    return await storage.get_object_download_url(
         bucket_id=CONFIG.inbox_bucket, object_id=object_id
     )
 

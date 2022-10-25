@@ -18,7 +18,7 @@ import hashlib
 import sys
 import tempfile
 from dataclasses import dataclass
-from typing import AsyncGenerator
+from typing import AsyncGenerator, Tuple
 
 import crypt4gh.header
 import crypt4gh.lib
@@ -29,8 +29,8 @@ from hexkit.providers.s3.testutils import FileObject, S3Fixture
 
 from .keypair_fixtures import KeypairFixture, generate_keypair_fixture  # noqa: F401
 
-BUCKET_ID = "test"
-OBJECT_ID = "random-data"
+BUCKET_ID = "test-bucket"
+OBJECT_ID = "test-object"
 FILE_SIZE = 50 * 1024**2
 PART_SIZE = 16 * 1024**2
 
@@ -45,6 +45,7 @@ class EncryptedDataFixture:
     file_secret: bytes
     file_size: int
     offset: int
+    public_key: bytes
     s3_fixture: S3Fixture
 
 
@@ -59,7 +60,9 @@ async def prefilled_random_data(s3_fixture: S3Fixture) -> S3Fixture:  # noqa: F8
 
 @pytest_asyncio.fixture
 async def encrypted_random_data(
-    generate_keypair_fixture: KeypairFixture, s3_fixture: S3Fixture  # noqa: F811
+    monkeypatch,
+    generate_keypair_fixture: KeypairFixture,  # noqa: F811
+    s3_fixture: S3Fixture,  # noqa: F811
 ) -> AsyncGenerator[EncryptedDataFixture, None]:
     """Bucket prefilled with crypt4gh-encrypted random data"""
     with big_temp_file(FILE_SIZE) as data:
@@ -91,10 +94,32 @@ async def encrypted_random_data(
             )
             file_size = len(obj.content)
             await s3_fixture.populate_file_objects([obj])
+
+            def eks_patch(
+                *, file_part: bytes, public_key: bytes, api_url: str
+            ) -> Tuple[bytes, str, int]:
+                """Monkeypatch to emulate API Call"""
+
+                return (
+                    file_secret,
+                    "secret_id",
+                    offset,
+                )
+
+            monkeypatch.setattr(
+                "irs.core.upload_handler.call_eks_api",
+                eks_patch,
+            )
+            monkeypatch.setattr(
+                "irs.adapters.inbound.s3_download.get_objectstorage",
+                lambda: s3_fixture.storage,
+            )
+
             yield EncryptedDataFixture(
                 checksum=checksum,
                 file_secret=file_secret,
                 file_size=file_size,
+                public_key=public_key,
                 offset=offset,
                 s3_fixture=s3_fixture,
             )

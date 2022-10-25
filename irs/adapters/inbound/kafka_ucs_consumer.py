@@ -14,8 +14,6 @@
 # limitations under the License.
 """KafkaEventSubscriber receiving events from UCS and validating file uploads"""
 
-from typing import Optional
-
 from hexkit.custom_types import Ascii, JsonObject
 from hexkit.protocols.eventsub import EventSubscriberProtocol
 from pydantic import BaseModel, Field
@@ -31,7 +29,6 @@ class FileUploadCompletedEvent(BaseModel):
 
     file_id: str = Field(..., alias="file-id")
     public_key: str = Field(..., alias="public-key")
-    grouping_label: Optional[str] = Field(alias="grouping-label")
     sha256_checksum: str = Field(..., alias="sha256-checksum")
     size: int
 
@@ -61,11 +58,11 @@ class UploadTaskReceiver(EventSubscriberProtocol):
             type_ (str): The type of the event.
             topic (str): Name of the topic the event was published to.
         """
-        object_id = payload["file-id"]
+        object_id = payload["file_id"]
         object_size = payload["size"]
-        public_key = payload["public-key"]
+        public_key = payload["public_key"]
         # do we need to handle grouping label for prefixes in inbox?
-        checksum = payload["sha256-checksum"]
+        checksum = payload["sha256_checksum"]
         await process_new_upload(
             object_id=object_id,
             object_size=object_size,
