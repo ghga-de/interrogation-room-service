@@ -34,8 +34,6 @@ OBJECT_ID = "test-object"
 FILE_SIZE = 50 * 1024**2
 PART_SIZE = 16 * 1024**2
 
-sys.set_int_max_str_digits(256 * 1024**2)  # type: ignore
-
 
 @dataclass
 class EncryptedDataFixture:
@@ -64,6 +62,7 @@ async def encrypted_random_data(
     s3_fixture: S3Fixture,  # noqa: F811
 ) -> AsyncGenerator[EncryptedDataFixture, None]:
     """Bucket prefilled with crypt4gh-encrypted random data"""
+    sys.set_int_max_str_digits(256 * 1024**2)  # type: ignore
     with big_temp_file(FILE_SIZE) as data:
         # rewind data pointer
         data.seek(0)
