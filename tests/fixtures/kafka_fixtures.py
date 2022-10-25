@@ -42,7 +42,7 @@ class IRSKafkaFixture(KafkaFixture):
 
 
 @pytest_asyncio.fixture
-async def kafka_fixture(monkeypatch):
+async def irs_kafka_fixture():
     """Configure Kafka subscriber/publisher"""
     with KafkaContainer() as kafka_container:
         kafka_servers = [kafka_container.get_bootstrap_server()]
@@ -52,14 +52,6 @@ async def kafka_fixture(monkeypatch):
             kafka_servers=kafka_servers,
         )
         async with KafkaEventPublisher.construct(config=config) as publisher:
-
-            async def publisher_patch():
-                return publisher
-
-            monkeypatch.setattr(
-                "irs.adapters.outbound.kafka_producer.get_publisher", publisher_patch
-            )
-
             async with KafkaEventSubscriber.construct(
                 config=config, translator=UploadTaskReceiver()
             ) as subscriber:

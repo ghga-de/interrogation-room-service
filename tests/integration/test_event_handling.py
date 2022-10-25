@@ -14,7 +14,7 @@
 # limitations under the License.
 
 import base64
-from typing import Any, Collection, Mapping
+from typing import Any, Collection, Mapping, Tuple
 
 import pytest
 from hexkit.providers.akafka.testutils import ExpectedEvent
@@ -28,7 +28,10 @@ from tests.fixtures.file_fixtures import (
     PART_SIZE,
     EncryptedDataFixture,
 )
-from tests.fixtures.kafka_fixtures import IRSKafkaFixture, kafka_fixture  # noqa: F401
+from tests.fixtures.kafka_fixtures import (  # noqa: F401
+    IRSKafkaFixture,
+    irs_kafka_fixture,
+)
 from tests.fixtures.keypair_fixtures import generate_keypair_fixture  # noqa: F401
 
 
@@ -53,12 +56,39 @@ def incoming_payload(data: EncryptedDataFixture) -> dict[str, Any]:
 
 @pytest.mark.asyncio
 async def test_failure_event(
+    monkeypatch,
     encrypted_random_data: EncryptedDataFixture,  # noqa: F811
-    kafka_fixture: IRSKafkaFixture,  # noqa: F811
+    irs_kafka_fixture: IRSKafkaFixture,  # noqa: F811
 ):
     """
     Test the whole pipeline from receiving an event to notifying about failure
     """
+    # explicit patchingng required for now
+    def eks_patch(
+        *, file_part: bytes, public_key: bytes, api_url: str
+    ) -> Tuple[bytes, str, int]:
+        """Monkeypatch to emulate API Call"""
+        return (
+            encrypted_random_data.file_secret,
+            "secret_id",
+            encrypted_random_data.offset,
+        )
+
+    async def publisher_patch():
+        return irs_kafka_fixture.publisher
+
+    monkeypatch.setattr(
+        "irs.core.upload_handler.call_eks_api",
+        eks_patch,
+    )
+    monkeypatch.setattr(
+        "irs.adapters.inbound.s3_download.get_objectstorage",
+        lambda: encrypted_random_data.s3_fixture.storage,
+    )
+    monkeypatch.setattr(
+        "irs.adapters.outbound.kafka_producer.get_publisher", publisher_patch
+    )
+
     payload_in = incoming_payload(encrypted_random_data)
     # introduce invalid checksum
     payload_in["sha256_checksum"] = payload_in["sha256_checksum"][1:]
@@ -72,23 +102,50 @@ async def test_failure_event(
         payload=payload_out, type_="upload_validation_failure"
     )
 
-    async with kafka_fixture.expect_events(
+    async with irs_kafka_fixture.expect_events(
         events=[expected_event_out],
         in_topic="file_interrogation",
         with_key=OBJECT_ID,
     ):
-        await kafka_fixture.publish_event(**event_in)
-        await kafka_fixture.subscriber.run(forever=False)
+        await irs_kafka_fixture.publish_event(**event_in)
+        await irs_kafka_fixture.subscriber.run(forever=False)
 
 
 @pytest.mark.asyncio
 async def test_success_event(
+    monkeypatch,
     encrypted_random_data: EncryptedDataFixture,  # noqa: F811
-    kafka_fixture: IRSKafkaFixture,  # noqa: F811
+    irs_kafka_fixture: IRSKafkaFixture,  # noqa: F811
 ):
     """
     Test the whole pipeline from receiving an event to notifying about success
     """
+    # explicit patching required for now
+    def eks_patch(
+        *, file_part: bytes, public_key: bytes, api_url: str
+    ) -> Tuple[bytes, str, int]:
+        """Monkeypatch to emulate API Call"""
+        return (
+            encrypted_random_data.file_secret,
+            "secret_id",
+            encrypted_random_data.offset,
+        )
+
+    async def publisher_patch():
+        return irs_kafka_fixture.publisher
+
+    monkeypatch.setattr(
+        "irs.core.upload_handler.call_eks_api",
+        eks_patch,
+    )
+    monkeypatch.setattr(
+        "irs.adapters.inbound.s3_download.get_objectstorage",
+        lambda: encrypted_random_data.s3_fixture.storage,
+    )
+    monkeypatch.setattr(
+        "irs.adapters.outbound.kafka_producer.get_publisher", publisher_patch
+    )
+
     payload_in = incoming_payload(encrypted_random_data)
     event_in = incoming_irs_event(payload=payload_in)
 
@@ -117,10 +174,10 @@ async def test_success_event(
         payload=payload_out, type_="upload_validation_success"
     )
 
-    async with kafka_fixture.expect_events(
+    async with irs_kafka_fixture.expect_events(
         events=[expected_event_out],
         in_topic="file_interrogation",
         with_key="test-object",
     ):
-        await kafka_fixture.publish_event(**event_in)
-        await kafka_fixture.subscriber.run(forever=False)
+        await irs_kafka_fixture.publish_event(**event_in)
+        await irs_kafka_fixture.subscriber.run(forever=False)

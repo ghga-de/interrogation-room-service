@@ -12,13 +12,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-""" """
+"""Fixtures to set up objectstorage with pre-filled data for testing"""
 
 import hashlib
 import sys
 import tempfile
 from dataclasses import dataclass
-from typing import AsyncGenerator, Tuple
+from typing import AsyncGenerator
 
 import crypt4gh.header
 import crypt4gh.lib
@@ -60,7 +60,6 @@ async def prefilled_random_data(s3_fixture: S3Fixture) -> S3Fixture:  # noqa: F8
 
 @pytest_asyncio.fixture
 async def encrypted_random_data(
-    monkeypatch,
     generate_keypair_fixture: KeypairFixture,  # noqa: F811
     s3_fixture: S3Fixture,  # noqa: F811
 ) -> AsyncGenerator[EncryptedDataFixture, None]:
@@ -94,25 +93,6 @@ async def encrypted_random_data(
             )
             file_size = len(obj.content)
             await s3_fixture.populate_file_objects([obj])
-
-            def eks_patch(
-                *, file_part: bytes, public_key: bytes, api_url: str
-            ) -> Tuple[bytes, str, int]:
-                """Monkeypatch to emulate API Call"""
-                return (
-                    file_secret,
-                    "secret_id",
-                    offset,
-                )
-
-            monkeypatch.setattr(
-                "irs.core.upload_handler.call_eks_api",
-                eks_patch,
-            )
-            monkeypatch.setattr(
-                "irs.adapters.inbound.s3_download.get_objectstorage",
-                lambda: s3_fixture.storage,
-            )
 
             yield EncryptedDataFixture(
                 checksum=checksum,
