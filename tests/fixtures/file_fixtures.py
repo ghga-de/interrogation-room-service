@@ -99,7 +99,6 @@ async def encrypted_random_data(
                 *, file_part: bytes, public_key: bytes, api_url: str
             ) -> Tuple[bytes, str, int]:
                 """Monkeypatch to emulate API Call"""
-
                 return (
                     file_secret,
                     "secret_id",

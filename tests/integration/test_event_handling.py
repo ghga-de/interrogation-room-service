@@ -34,7 +34,7 @@ from tests.fixtures.keypair_fixtures import generate_keypair_fixture  # noqa: F4
 
 
 def incoming_irs_event(payload: dict[str, object]) -> Mapping[str, Collection[str]]:
-    """Generate test event for sanity check"""
+    """Emulate incoming event from ucs"""
     type_ = "ucs"
     key = OBJECT_ID
     topic = "file_upload_received"
@@ -58,7 +58,7 @@ async def test_failure_event(
     kafka_fixture: IRSKafkaFixture,  # noqa: F811
 ):
     """
-    Test the whole pipeline from receiving an event to notifying about success/failure
+    Test the whole pipeline from receiving an event to notifying about failure
     """
     upload_task = asyncio.create_task(kafka_fixture.subscriber.run(forever=False))
 
@@ -96,7 +96,7 @@ async def test_success_event(
     kafka_fixture: IRSKafkaFixture,  # noqa: F811
 ):
     """
-    Test the whole pipeline from receiving an event to notifying about success/failure
+    Test the whole pipeline from receiving an event to notifying about success
     """
     upload_task = asyncio.create_task(kafka_fixture.subscriber.run(forever=False))
 

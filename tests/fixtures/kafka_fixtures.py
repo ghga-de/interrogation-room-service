@@ -35,8 +35,7 @@ class IRSKafkaFixture(KafkaFixture):
         publisher: KafkaEventPublisher,
         subscriber: KafkaEventSubscriber,
     ):
-        """Initialize with connection details, a ready-to-use publisher and subscriber"""
-
+        """Initialize with connection details and a ready-to-use publisher and subscriber"""
         self.kafka_servers = kafka_servers
         self.publisher = publisher
         self.subscriber = subscriber
