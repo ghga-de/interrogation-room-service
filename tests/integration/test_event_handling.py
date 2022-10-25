@@ -104,7 +104,6 @@ async def test_success_event(
     expected_event_in = ExpectedEvent(payload=payload_in, type_="ucs")
     event_in = incoming_irs_event(payload=payload_in)
 
-    offset = encrypted_random_data.offset
     download_url = (
         await encrypted_random_data.s3_fixture.storage.get_object_download_url(
             bucket_id=BUCKET_ID, object_id=OBJECT_ID
@@ -114,7 +113,7 @@ async def test_success_event(
         download_url=download_url,
         secret=encrypted_random_data.file_secret,
         object_size=encrypted_random_data.file_size,
-        offset=offset,
+        offset=encrypted_random_data.offset,
     )
 
     payload_out = {
