@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import asyncio
 import base64
 from typing import Any, Collection, Mapping
 
@@ -60,12 +59,9 @@ async def test_failure_event(
     """
     Test the whole pipeline from receiving an event to notifying about failure
     """
-    upload_task = asyncio.create_task(kafka_fixture.subscriber.run(forever=False))
-
     payload_in = incoming_payload(encrypted_random_data)
     # introduce invalid checksum
     payload_in["sha256_checksum"] = payload_in["sha256_checksum"][1:]
-    expected_event_in = ExpectedEvent(payload=payload_in, type_="ucs")
     event_in = incoming_irs_event(payload=payload_in)
 
     payload_out = {
@@ -77,17 +73,12 @@ async def test_failure_event(
     )
 
     async with kafka_fixture.expect_events(
-        events=[expected_event_in],
-        in_topic="file_upload_received",
+        events=[expected_event_out],
+        in_topic="file_interrogation",
         with_key=OBJECT_ID,
     ):
-        async with kafka_fixture.expect_events(
-            events=[expected_event_out],
-            in_topic="file_interrogation",
-            with_key=OBJECT_ID,
-        ):
-            await kafka_fixture.publish_event(**event_in)
-            await upload_task
+        await kafka_fixture.publish_event(**event_in)
+        await kafka_fixture.subscriber.run(forever=False)
 
 
 @pytest.mark.asyncio
@@ -98,10 +89,7 @@ async def test_success_event(
     """
     Test the whole pipeline from receiving an event to notifying about success
     """
-    upload_task = asyncio.create_task(kafka_fixture.subscriber.run(forever=False))
-
     payload_in = incoming_payload(encrypted_random_data)
-    expected_event_in = ExpectedEvent(payload=payload_in, type_="ucs")
     event_in = incoming_irs_event(payload=payload_in)
 
     download_url = (
@@ -130,14 +118,9 @@ async def test_success_event(
     )
 
     async with kafka_fixture.expect_events(
-        events=[expected_event_in],
-        in_topic="file_upload_received",
+        events=[expected_event_out],
+        in_topic="file_interrogation",
         with_key="test-object",
     ):
-        async with kafka_fixture.expect_events(
-            events=[expected_event_out],
-            in_topic="file_interrogation",
-            with_key="test-object",
-        ):
-            await kafka_fixture.publish_event(**event_in)
-            await upload_task
+        await kafka_fixture.publish_event(**event_in)
+        await kafka_fixture.subscriber.run(forever=False)
