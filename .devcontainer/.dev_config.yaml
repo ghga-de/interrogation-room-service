@@ -1,6 +1,6 @@
 # Please only mention the non-default settings here:
 
-inbox_bucket: inbox
+inbox_bucket: test-bucket
 eks_url: http://127.0.0.1/eks
 kafka_servers:
   - localhost:9092

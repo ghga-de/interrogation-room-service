@@ -125,7 +125,6 @@ def get_segments(*, file_part: bytes) -> Tuple[List[bytes], bytes]:
 
     num_segments = len(file_part) / CIPHER_SEGMENT_SIZE
     full_segments = int(num_segments)
-    print(num_segments)
     segments = [
         file_part[i * CIPHER_SEGMENT_SIZE : (i + 1) * CIPHER_SEGMENT_SIZE]
         for i in range(full_segments)

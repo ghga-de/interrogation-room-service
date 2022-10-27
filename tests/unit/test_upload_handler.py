@@ -25,17 +25,17 @@ from irs.core.upload_handler import (
     retrieve_part,
     retrieve_parts,
 )
-
-from .fixtures.file_fixtures import encrypted_random_data  # noqa: F401
-from .fixtures.file_fixtures import prefilled_random_data  # noqa: F401
-from .fixtures.file_fixtures import (
+from tests.fixtures.file_fixtures import encrypted_random_data  # noqa: F401
+from tests.fixtures.file_fixtures import prefilled_random_data  # noqa: F401
+from tests.fixtures.file_fixtures import (
     BUCKET_ID,
     FILE_SIZE,
     OBJECT_ID,
     PART_SIZE,
     EncryptedDataFixture,
 )
-from .fixtures.keypair_fixtures import generate_keypair_fixture  # noqa: F401
+
+from ..fixtures.keypair_fixtures import generate_keypair_fixture  # noqa: F401
 
 NUM_CHUNKS = PART_SIZE / CIPHER_SEGMENT_SIZE
 BYTES_REMAINING = int((NUM_CHUNKS - int(NUM_CHUNKS)) * int(CIPHER_SEGMENT_SIZE))

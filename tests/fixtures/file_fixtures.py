@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-""" """
+"""Fixtures to set up objectstorage with pre-filled data for testing"""
 
 import hashlib
 import sys
@@ -29,12 +29,10 @@ from hexkit.providers.s3.testutils import FileObject, S3Fixture
 
 from .keypair_fixtures import KeypairFixture, generate_keypair_fixture  # noqa: F401
 
-BUCKET_ID = "test"
-OBJECT_ID = "random-data"
+BUCKET_ID = "test-bucket"
+OBJECT_ID = "test-object"
 FILE_SIZE = 50 * 1024**2
 PART_SIZE = 16 * 1024**2
-
-sys.set_int_max_str_digits(256 * 1024**2)  # type: ignore
 
 
 @dataclass
@@ -45,6 +43,7 @@ class EncryptedDataFixture:
     file_secret: bytes
     file_size: int
     offset: int
+    public_key: bytes
     s3_fixture: S3Fixture
 
 
@@ -59,9 +58,11 @@ async def prefilled_random_data(s3_fixture: S3Fixture) -> S3Fixture:  # noqa: F8
 
 @pytest_asyncio.fixture
 async def encrypted_random_data(
-    generate_keypair_fixture: KeypairFixture, s3_fixture: S3Fixture  # noqa: F811
+    generate_keypair_fixture: KeypairFixture,  # noqa: F811
+    s3_fixture: S3Fixture,  # noqa: F811
 ) -> AsyncGenerator[EncryptedDataFixture, None]:
     """Bucket prefilled with crypt4gh-encrypted random data"""
+    sys.set_int_max_str_digits(256 * 1024**2)  # type: ignore
     with big_temp_file(FILE_SIZE) as data:
         # rewind data pointer
         data.seek(0)
@@ -91,10 +92,12 @@ async def encrypted_random_data(
             )
             file_size = len(obj.content)
             await s3_fixture.populate_file_objects([obj])
+
             yield EncryptedDataFixture(
                 checksum=checksum,
                 file_secret=file_secret,
                 file_size=file_size,
+                public_key=public_key,
                 offset=offset,
                 s3_fixture=s3_fixture,
             )
