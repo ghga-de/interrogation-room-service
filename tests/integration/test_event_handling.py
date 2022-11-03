@@ -19,15 +19,11 @@ from typing import Any, Collection, Mapping, Tuple
 import pytest
 from hexkit.providers.akafka.testutils import ExpectedEvent
 from hexkit.providers.s3.testutils import s3_fixture  # noqa: F401
+from hexkit.utils import calc_part_size
 
 from irs.core.upload_handler import compute_checksums
 from tests.fixtures.file_fixtures import encrypted_random_data  # noqa: F401
-from tests.fixtures.file_fixtures import (
-    BUCKET_ID,
-    OBJECT_ID,
-    PART_SIZE,
-    EncryptedDataFixture,
-)
+from tests.fixtures.file_fixtures import BUCKET_ID, OBJECT_ID, EncryptedDataFixture
 from tests.fixtures.kafka_fixtures import (  # noqa: F401
     IRSKafkaFixture,
     irs_kafka_fixture,
@@ -154,10 +150,12 @@ async def test_success_event(
             bucket_id=BUCKET_ID, object_id=OBJECT_ID
         )
     )
+    part_size = calc_part_size(file_size=encrypted_random_data.file_size)
     part_checksums_md5, part_checksums_sha256, _ = await compute_checksums(
         download_url=download_url,
         secret=encrypted_random_data.file_secret,
         object_size=encrypted_random_data.file_size,
+        part_size=part_size,
         offset=encrypted_random_data.offset,
     )
 
@@ -165,7 +163,7 @@ async def test_success_event(
         "file_id": OBJECT_ID,
         "secret_id": "secret_id",
         "offset": encrypted_random_data.offset,
-        "part_size": PART_SIZE,
+        "part_size": part_size,
         "part_checksums_md5": part_checksums_md5,
         "part_checksums_sha256": part_checksums_sha256,
         "content_checksum_sha256": encrypted_random_data.checksum,

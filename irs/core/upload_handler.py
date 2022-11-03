@@ -19,6 +19,7 @@ import math
 from typing import List, Tuple
 
 from crypt4gh.lib import CIPHER_SEGMENT_SIZE, CryptoError, decrypt_block
+from hexkit.utils import calc_part_size
 
 from irs.adapters.http.api_calls import call_eks_api
 from irs.adapters.http.exceptions import KnownError
@@ -33,8 +34,6 @@ from irs.adapters.outbound.kafka_producer import (
 )
 from irs.config import CONFIG
 
-PART_SIZE = 16 * 1024**2
-
 
 async def process_new_upload(  # pylint: disable=too-many-locals
     *, object_id: str, object_size: int, public_key: str, checksum: str
@@ -43,9 +42,10 @@ async def process_new_upload(  # pylint: disable=too-many-locals
     Forwards first file part to encryption key store, retrieves file encryption
     secret(s) (K_data), decrypts file and computes checksums
     """
+    part_size = calc_part_size(file_size=object_size)
     try:
         download_url = await get_download_url(object_id=object_id)
-        part = await retrieve_part(url=download_url, start=0, stop=PART_SIZE - 1)
+        part = await retrieve_part(url=download_url, start=0, stop=part_size - 1)
         secret, secret_id, offset = call_eks_api(
             file_part=part, public_key=public_key, api_url=CONFIG.eks_url
         )
@@ -57,6 +57,7 @@ async def process_new_upload(  # pylint: disable=too-many-locals
             download_url=download_url,
             secret=secret,
             object_size=object_size,
+            part_size=part_size,
             offset=offset,
         )
     except (CryptoError, KnownError, ValueError) as exc:
@@ -68,7 +69,7 @@ async def process_new_upload(  # pylint: disable=too-many-locals
             file_id=object_id,
             secret_id=secret_id,
             offset=offset,
-            part_size=PART_SIZE,
+            part_size=part_size,
             part_checksums_sha256=part_checksums_sha256,
             part_checksums_md5=part_checksums_md5,
             content_checksum_sha256=content_checksum_sha256,
@@ -77,8 +78,8 @@ async def process_new_upload(  # pylint: disable=too-many-locals
         await produce_failure_event(file_id=object_id)
 
 
-async def compute_checksums(
-    *, download_url: str, secret: bytes, object_size: int, offset: int
+async def compute_checksums(  # pylint: disable=too-many-locals
+    *, download_url: str, secret: bytes, object_size: int, part_size: int, offset: int
 ) -> Tuple[List[str], List[str], str]:
     """Compute total unencrypted file checksum and encrypted part checksums"""
     total_sha256_checksum = hashlib.sha256()
@@ -89,7 +90,7 @@ async def compute_checksums(
     partial_ciphersegment = b""
 
     async for part in retrieve_parts(
-        url=download_url, object_size=object_size, part_size=PART_SIZE, offset=offset
+        url=download_url, object_size=object_size, part_size=part_size, offset=offset
     ):
         md5sum, sha256sum = get_part_checksums(file_part=part)
         encrypted_md5_part_checksums.append(md5sum)
