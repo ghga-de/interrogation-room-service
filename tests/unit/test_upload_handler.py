@@ -18,6 +18,7 @@ import pytest
 from crypt4gh.lib import CIPHER_SEGMENT_SIZE
 from hexkit.providers.s3.testutils import s3_fixture  # noqa: F401
 from hexkit.providers.s3.testutils import S3Fixture
+from hexkit.utils import calc_part_size
 
 from irs.core.upload_handler import (
     compute_checksums,
@@ -83,10 +84,12 @@ async def test_checksums(encrypted_random_data: EncryptedDataFixture):  # noqa: 
             bucket_id=BUCKET_ID, object_id=OBJECT_ID
         )
     )
+    part_size = calc_part_size(file_size=encrypted_random_data.file_size)
     _, _, computed_checksum = await compute_checksums(
         download_url=download_url,
         secret=file_secret,
         object_size=object_size,
+        part_size=part_size,
         offset=offset,
     )
     assert checksum == computed_checksum
