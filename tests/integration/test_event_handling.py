@@ -21,9 +21,8 @@ from hexkit.providers.akafka.testutils import ExpectedEvent
 from hexkit.providers.s3.testutils import s3_fixture  # noqa: F401
 from hexkit.utils import calc_part_size
 
-from irs.core.upload_handler import compute_checksums
 from tests.fixtures.file_fixtures import encrypted_random_data  # noqa: F401
-from tests.fixtures.file_fixtures import BUCKET_ID, OBJECT_ID, EncryptedDataFixture
+from tests.fixtures.file_fixtures import OBJECT_ID, EncryptedDataFixture
 from tests.fixtures.kafka_fixtures import (  # noqa: F401
     IRSKafkaFixture,
     irs_kafka_fixture,
@@ -95,16 +94,19 @@ async def test_failure_event(
         "cause": "Checksum mismatch",
     }
     expected_event_out = ExpectedEvent(
-        payload=payload_out, type_="upload_validation_failure"
+        payload=payload_out, type_="upload_validation_failure", key=OBJECT_ID
     )
 
-    async with irs_kafka_fixture.expect_events(
-        events=[expected_event_out],
+    async with irs_kafka_fixture.record_events(
         in_topic="file_interrogation",
-        with_key=OBJECT_ID,
-    ):
+    ) as event_recorder:
         await irs_kafka_fixture.publish_event(**event_in)
         await irs_kafka_fixture.subscriber.run(forever=False)
+
+    recorded_events = event_recorder.recorded_events
+
+    assert len(recorded_events) == 1
+    assert recorded_events[0].payload == expected_event_out.payload
 
 
 @pytest.mark.asyncio
@@ -145,37 +147,29 @@ async def test_success_event(
     payload_in = incoming_payload(encrypted_random_data)
     event_in = incoming_irs_event(payload=payload_in)
 
-    download_url = (
-        await encrypted_random_data.s3_fixture.storage.get_object_download_url(
-            bucket_id=BUCKET_ID, object_id=OBJECT_ID
-        )
-    )
     part_size = calc_part_size(file_size=encrypted_random_data.file_size)
-    part_checksums_md5, part_checksums_sha256, _ = await compute_checksums(
-        download_url=download_url,
-        secret=encrypted_random_data.file_secret,
-        object_size=encrypted_random_data.file_size,
-        part_size=part_size,
-        offset=encrypted_random_data.offset,
-    )
 
     payload_out = {
         "file_id": OBJECT_ID,
         "secret_id": "secret_id",
         "offset": encrypted_random_data.offset,
         "part_size": part_size,
-        "part_checksums_md5": part_checksums_md5,
-        "part_checksums_sha256": part_checksums_sha256,
         "content_checksum_sha256": encrypted_random_data.checksum,
     }
     expected_event_out = ExpectedEvent(
-        payload=payload_out, type_="upload_validation_success"
+        payload=payload_out, type_="upload_validation_success", key="test-object"
     )
 
-    async with irs_kafka_fixture.expect_events(
-        events=[expected_event_out],
+    async with irs_kafka_fixture.record_events(
         in_topic="file_interrogation",
-        with_key="test-object",
-    ):
+    ) as event_recorder:
         await irs_kafka_fixture.publish_event(**event_in)
         await irs_kafka_fixture.subscriber.run(forever=False)
+
+    recorded_events = event_recorder.recorded_events
+
+    assert len(recorded_events) == 1
+    event = recorded_events[0]
+
+    for key in payload_out.keys():
+        assert event.payload[key] == expected_event_out.payload[key]
