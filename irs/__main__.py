@@ -32,6 +32,6 @@ async def run_subscriber(config: Config = CONFIG):
         await subscriber.run()
 
 
-if __name__ == "__main__":
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(run_subscriber())
+def run():
+    """Synchronous entrypoint for Docker container, etc."""
+    asyncio.run(run_subscriber())
