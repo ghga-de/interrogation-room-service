@@ -39,9 +39,9 @@ def call_eks_api(
     if status_code != 200:
         spec = {
             400: {
-                "malformedOrMissingEnvelopeError": exceptions.MalformedOrMissingEnvelope()
+                "malformedOrMissingEnvelopeError": exceptions.MalformedOrMissingEnvelope
             },
-            403: {"envelopeDecryptionError": exceptions.EnvelopeDecryptionError()},
+            403: {"envelopeDecryptionError": exceptions.EnvelopeDecryptionError},
         }
         ResponseExceptionTranslator(spec=spec).handle(response=response)
         raise exceptions.BadResponseCodeError(url=api_url, response_code=status_code)
