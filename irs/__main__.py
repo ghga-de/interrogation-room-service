@@ -17,19 +17,24 @@
 
 import asyncio
 
-from hexkit.providers.akafka import KafkaEventSubscriber
+from hexkit.providers.akafka import KafkaEventPublisher, KafkaEventSubscriber
 
 from irs.adapters.inbound.kafka_ucs_consumer import UploadTaskReceiver
+from irs.core.upload_handler import UploadHandler
 
 from .config import CONFIG, Config
 
 
 async def run_subscriber(config: Config = CONFIG):
     """Start the EventSubscriber part of the service"""
-    async with KafkaEventSubscriber.construct(
-        config=config, translator=UploadTaskReceiver()
-    ) as subscriber:
-        await subscriber.run()
+
+    async with KafkaEventPublisher.construct(config=config) as publisher:
+        upload_handler = UploadHandler(event_publisher=publisher)
+        async with KafkaEventSubscriber.construct(
+            config=config,
+            translator=UploadTaskReceiver(config=config, upload_handler=upload_handler),
+        ) as subscriber:
+            await subscriber.run()
 
 
 def run():
