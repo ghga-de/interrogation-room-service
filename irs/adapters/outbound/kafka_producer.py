@@ -98,7 +98,7 @@ class EventPubTranslator(EventPublisherPort):
         event_payload = event_schemas.FileUploadValidationFailure(
             file_id=file_id,
             upload_date=upload_date,
-            cause=cause,
+            reason=cause,
         ).dict()
         await self._provider.publish(
             payload=event_payload,
