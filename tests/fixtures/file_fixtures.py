@@ -18,6 +18,7 @@ import hashlib
 import sys
 import tempfile
 from dataclasses import dataclass
+from datetime import datetime
 from typing import AsyncGenerator
 
 import crypt4gh.header
@@ -42,18 +43,10 @@ class EncryptedDataFixture:
     checksum: str
     file_secret: bytes
     file_size: int
+    upload_date: datetime
     offset: int
     public_key: bytes
     s3_fixture: S3Fixture
-
-
-@pytest_asyncio.fixture
-async def prefilled_random_data(s3_fixture: S3Fixture) -> S3Fixture:  # noqa: F811
-    """Bucket prefilled with one random test file"""
-    with big_temp_file(FILE_SIZE) as data:
-        obj = FileObject(file_path=data.name, bucket_id=BUCKET_ID, object_id=OBJECT_ID)
-        await s3_fixture.populate_file_objects([obj])
-        yield s3_fixture
 
 
 @pytest_asyncio.fixture
@@ -67,6 +60,7 @@ async def encrypted_random_data(
         # rewind data pointer
         data.seek(0)
         with tempfile.NamedTemporaryFile() as encrypted_file:
+            upload_date = datetime.utcnow()
             private_key = generate_keypair_fixture.private_key
             public_key = generate_keypair_fixture.public_key
             enc_keys = [(0, private_key, public_key)]
@@ -100,4 +94,5 @@ async def encrypted_random_data(
                 public_key=public_key,
                 offset=offset,
                 s3_fixture=s3_fixture,
+                upload_date=upload_date,
             )

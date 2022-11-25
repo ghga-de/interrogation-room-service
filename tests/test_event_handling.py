@@ -32,7 +32,7 @@ from tests.fixtures.keypair_fixtures import generate_keypair_fixture  # noqa: F4
 
 def incoming_irs_event(payload: dict[str, object]) -> Mapping[str, Collection[str]]:
     """Emulate incoming event from ucs"""
-    type_ = "ucs"
+    type_ = "file_uploads"
     key = OBJECT_ID
     topic = "file_upload_received"
     event = {"payload": payload, "type_": type_, "key": key, "topic": topic}
@@ -43,9 +43,10 @@ def incoming_payload(data: EncryptedDataFixture) -> dict[str, Any]:
     """Payload arriving at the interrogation room"""
     return {
         "file_id": OBJECT_ID,
-        "public_key": base64.b64encode(data.public_key).decode("utf-8"),
-        "sha256_checksum": data.checksum,
-        "size": data.file_size,
+        "submitter_public_key": base64.b64encode(data.public_key).decode("utf-8"),
+        "upload_date": data.upload_date,
+        "expected_decrypted_sha256": data.checksum,
+        "decrypted_size": data.file_size,
     }
 
 
@@ -86,12 +87,14 @@ async def test_failure_event(
 
     payload_in = incoming_payload(encrypted_random_data)
     # introduce invalid checksum
-    payload_in["sha256_checksum"] = payload_in["sha256_checksum"][1:]
+    payload_in["expected_decrypted_sha256"] = payload_in["expected_decrypted_sha256"][
+        1:
+    ]
     event_in = incoming_irs_event(payload=payload_in)
 
     payload_out = {
         "file_id": OBJECT_ID,
-        "cause": "Checksum mismatch",
+        "reason": "Checksum mismatch",
     }
     expected_event_out = ExpectedEvent(
         payload=payload_out, type_="upload_validation_failure", key=OBJECT_ID
@@ -151,10 +154,13 @@ async def test_success_event(
 
     payload_out = {
         "file_id": OBJECT_ID,
-        "secret_id": "secret_id",
-        "offset": encrypted_random_data.offset,
-        "part_size": part_size,
-        "content_checksum_sha256": encrypted_random_data.checksum,
+        "upload_date": encrypted_random_data.upload_date,
+        "decryption_secret_id": "secret_id",
+        "content_offset": encrypted_random_data.offset,
+        "encrypted_part_size": part_size,
+        "decrypted_sha256": encrypted_random_data.checksum,
+        "encrypted_parts_md5": "",  # TODO
+        "encrypted_parts_sha256": "",  # TODO
     }
     expected_event_out = ExpectedEvent(
         payload=payload_out, type_="upload_validation_success", key="test-object"
