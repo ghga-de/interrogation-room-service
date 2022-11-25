@@ -20,7 +20,7 @@ from hexkit.custom_types import Ascii, JsonObject
 from hexkit.protocols.eventsub import EventSubscriberProtocol
 from pydantic import BaseSettings, Field
 
-from irs.core.upload_handler import process_new_upload
+from irs.ports.inbound.upload_handler import UploadHandlerPort
 
 
 class EventSubTanslatorConfig(BaseSettings):
@@ -43,8 +43,7 @@ class UploadTaskReceiver(EventSubscriberProtocol):
     is used to received events relevant for file uploads."""
 
     def __init__(
-        self,
-        config: EventSubTanslatorConfig,
+        self, config: EventSubTanslatorConfig, upload_handler: UploadHandlerPort
     ):
         """Initialize with config parameters and core dependencies."""
 
@@ -54,6 +53,8 @@ class UploadTaskReceiver(EventSubscriberProtocol):
         self.types_of_interest = [
             config.upload_received_event_type,
         ]
+
+        self._upload_handler = upload_handler
 
         self._config = config
 
@@ -75,13 +76,15 @@ class UploadTaskReceiver(EventSubscriberProtocol):
         )
 
         object_id = validated_payload["file_id"]
-        object_size = validated_payload["size"]
-        public_key = validated_payload["public_key"]
-        checksum = validated_payload["sha256_checksum"]
+        public_key = validated_payload["submitter_public_key"]
+        upload_date = validated_payload["upload_date"]
+        object_size = validated_payload["decryptd_size"]
+        sha256_checksum = validated_payload["expected_decrypted_sha256"]
 
-        await process_new_upload(
+        await self._upload_handler.process_new_upload(
             object_id=object_id,
-            object_size=object_size,
             public_key=public_key,
-            checksum=checksum,
+            upload_date=upload_date,
+            object_size=object_size,
+            sha256_checksum=sha256_checksum,
         )
