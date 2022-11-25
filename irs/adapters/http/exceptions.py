@@ -35,7 +35,7 @@ class EnvelopeDecryptionError(KnownError):
     """
 
     def __init__(self):
-        message = ""
+        message = "Envelope could not be decrypted with provided keys."
         super().__init__(message)
 
 
@@ -43,7 +43,7 @@ class MalformedOrMissingEnvelope(KnownError):
     """Thrown when the when the encryption key store could not find a valid envelope"""
 
     def __init__(self):
-        message = ""
+        message = "The crypt4GH envelope is either malformed or missing."
         super().__init__(message)
 
 
