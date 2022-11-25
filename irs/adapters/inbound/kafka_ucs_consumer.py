@@ -73,18 +73,12 @@ class UploadTaskReceiver(EventSubscriberProtocol):
         validated_payload = get_validated_payload(
             payload=payload,
             schema=event_schemas.FileUploadReceived,
-        ).dict()
-
-        object_id = validated_payload["file_id"]
-        public_key = validated_payload["submitter_public_key"]
-        upload_date = validated_payload["upload_date"]
-        object_size = validated_payload["decrypted_size"]
-        sha256_checksum = validated_payload["expected_decrypted_sha256"]
+        )
 
         await self._upload_handler.process_new_upload(
-            object_id=object_id,
-            public_key=public_key,
-            upload_date=upload_date,
-            object_size=object_size,
-            sha256_checksum=sha256_checksum,
+            object_id=validated_payload.file_id,
+            public_key=validated_payload.submitter_public_key,
+            upload_date=validated_payload.upload_date,
+            object_size=validated_payload.decrypted_size,
+            sha256_checksum=validated_payload.expected_decrypted_sha256,
         )
