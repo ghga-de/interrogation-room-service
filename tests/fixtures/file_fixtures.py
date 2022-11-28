@@ -33,7 +33,6 @@ from .keypair_fixtures import KeypairFixture, generate_keypair_fixture  # noqa: 
 BUCKET_ID = "test-bucket"
 OBJECT_ID = "test-object"
 FILE_SIZE = 50 * 1024**2
-PART_SIZE = 16 * 1024**2
 
 
 @dataclass

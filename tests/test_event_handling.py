@@ -147,8 +147,8 @@ async def test_success_event(
         "content_offset": encrypted_random_data.offset,
         "encrypted_part_size": part_size,
         "decrypted_sha256": encrypted_random_data.checksum,
-        "encrypted_parts_md5": "",  # TODO
-        "encrypted_parts_sha256": "",  # TODO
+        "encrypted_parts_md5": ["part1_checksum_md5", "part2_checksum_md5"],
+        "encrypted_parts_sha256": ["part1_checksum_sha256", "part1_checksum_sha256"],
     }
     expected_event_out = ExpectedEvent(
         payload=payload_out, type_="upload_validation_success", key="test-object"
