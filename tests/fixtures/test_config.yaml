@@ -10,7 +10,8 @@ s3_access_key_id: test
 service_name: irs
 service_instance_id: 001
 kafka_servers: ["kafka:9092"]
-upload_accepted_event_topic: file_ingestion
-upload_accepted_event_type: upload_accepted
-files_to_register_topic: file_ingestion
-files_to_register_type: files_to_register
+upload_accepted_event_type: file_uploads
+upload_accepted_event_topic: file_upload_received
+files_to_register_type: file_interrogation
+files_to_register_success_topic: file_validation_success
+files_to_register_failure_topic: file_validation_failure

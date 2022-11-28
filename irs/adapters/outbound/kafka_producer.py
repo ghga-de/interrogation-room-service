@@ -26,7 +26,14 @@ from irs.ports.outbound.event_pub import EventPublisherPort
 class EventPubTanslatorConfig(BaseSettings):
     """Config for publishing file upload-related events."""
 
-    files_to_register_topic: str = Field(
+    files_to_register_success_topic: str = Field(
+        ...,
+        description=(
+            "The name of the topic to receive events informing about new files to register."
+        ),
+        example="file_ingestion",
+    )
+    files_to_register_failure_topic: str = Field(
         ...,
         description=(
             "The name of the topic to receive events informing about new files to register."
@@ -80,7 +87,7 @@ class EventPubTranslator(EventPublisherPort):
         await self._provider.publish(
             payload=event_payload,
             type_=self._config.files_to_register_type,
-            topic=self._config.files_to_register_topic,
+            topic=self._config.files_to_register_success_topic,
             key=file_id,
         )
 
@@ -103,6 +110,6 @@ class EventPubTranslator(EventPublisherPort):
         await self._provider.publish(
             payload=event_payload,
             type_=self._config.files_to_register_type,
-            topic=self._config.files_to_register_topic,
+            topic=self._config.files_to_register_failure_topic,
             key=file_id,
         )

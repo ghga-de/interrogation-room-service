@@ -15,19 +15,13 @@
 """Fixtures and classes to test kafka communication"""
 
 import pytest_asyncio
-from hexkit.providers.akafka import (
-    KafkaConfig,
-    KafkaEventPublisher,
-    KafkaEventSubscriber,
-)
+from hexkit.providers.akafka import KafkaEventPublisher, KafkaEventSubscriber
 from hexkit.providers.akafka.testutils import KafkaFixture
 from testcontainers.kafka import KafkaContainer
 
-from irs.adapters.inbound.kafka_ucs_consumer import (
-    EventSubTanslatorConfig,
-    UploadTaskReceiver,
-)
+from irs.adapters.inbound.kafka_ucs_consumer import UploadTaskReceiver
 from irs.core.upload_handler import UploadHandler
+from tests.fixtures.config import DEFAULT_CONFIG
 
 
 class IRSKafkaFixture(KafkaFixture):
@@ -50,19 +44,16 @@ async def irs_kafka_fixture():
     """Configure Kafka subscriber/publisher"""
     with KafkaContainer() as kafka_container:
         kafka_servers = [kafka_container.get_bootstrap_server()]
-        kafka_config = KafkaConfig(
-            service_name="irs_test_publisher",
-            service_instance_id="001",
-            kafka_servers=kafka_servers,
-        )
-        async with KafkaEventPublisher.construct(config=kafka_config) as publisher:
+        config = DEFAULT_CONFIG
+        config.kafka_servers = kafka_servers
+
+        async with KafkaEventPublisher.construct(config=config) as publisher:
             upload_handler = UploadHandler(event_publisher=publisher)
-            event_sub_config = EventSubTanslatorConfig()
 
             async with KafkaEventSubscriber.construct(
-                config=kafka_config,
+                config=config,
                 translator=UploadTaskReceiver(
-                    config=event_sub_config, upload_handler=upload_handler
+                    config=config, upload_handler=upload_handler
                 ),
             ) as subscriber:
                 yield IRSKafkaFixture(

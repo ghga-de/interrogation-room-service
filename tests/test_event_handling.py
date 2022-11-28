@@ -91,7 +91,7 @@ async def test_failure_event(
         "reason": "Checksum mismatch",
     }
     expected_event_out = ExpectedEvent(
-        payload=payload_out, type_="upload_validation_failure", key=OBJECT_ID
+        payload=payload_out, type_=irs_kafka_fixture, key=OBJECT_ID
     )
 
     async with irs_kafka_fixture.record_events(
