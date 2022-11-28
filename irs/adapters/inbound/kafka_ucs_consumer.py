@@ -38,7 +38,7 @@ class EventSubTanslatorConfig(BaseSettings):
     )
 
 
-class UploadTaskReceiver(EventSubscriberProtocol):
+class EventSubTranslator(EventSubscriberProtocol):
     """A triple hexagonal translator compatible with the EventSubscriberProtocol that
     is used to received events relevant for file uploads."""
 
