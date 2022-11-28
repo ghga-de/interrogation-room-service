@@ -16,7 +16,7 @@
 """Test config"""
 
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from pydantic.env_settings import BaseSettings
 
@@ -32,7 +32,7 @@ def get_config(
 ) -> Config:
     """Merges parameters from the default TEST_CONFIG_YAML with params inferred
     from testcontainers."""
-    sources_dict: Dict[str, object] = {}
+    sources_dict: Dict[str, Any] = {}
 
     if sources is not None:
         for source in sources:
