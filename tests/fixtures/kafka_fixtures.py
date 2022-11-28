@@ -48,7 +48,8 @@ async def irs_kafka_fixture():
         config = DEFAULT_CONFIG
         config.kafka_servers = kafka_servers
 
-        async with KafkaEventPublisher.construct(config=config) as publisher:
+        async with KafkaEventPublisher.construct(config=config) as provider:
+            publisher = EventPublisher(config=config, provider=provider)
             upload_handler = UploadHandler(event_publisher=publisher)
 
             async with KafkaEventSubscriber.construct(
