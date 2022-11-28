@@ -10,3 +10,5 @@ s3_session_token: null
 service_instance_id: interrogation_room-001
 service_name: interrogation_room
 topic: file_interrogation
+upload_received_event_topic: file_uploads
+upload_received_event_type: file_upload_received

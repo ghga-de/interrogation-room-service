@@ -3,6 +3,24 @@
   "description": "Modifies the orginal Settings class provided by the user",
   "type": "object",
   "properties": {
+    "upload_received_event_topic": {
+      "title": "Upload Received Event Topic",
+      "description": "Name of the topic to publish event that inform about new file uploads.",
+      "default": "file_uploads",
+      "env_names": [
+        "irs_upload_received_event_topic"
+      ],
+      "type": "string"
+    },
+    "upload_received_event_type": {
+      "title": "Upload Received Event Type",
+      "description": "The type to use for event that inform about new file uploads.",
+      "default": "file_upload_received",
+      "env_names": [
+        "irs_upload_received_event_type"
+      ],
+      "type": "string"
+    },
     "s3_endpoint_url": {
       "title": "S3 Endpoint Url",
       "description": "URL to the S3 API.",
