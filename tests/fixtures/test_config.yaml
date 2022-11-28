@@ -1,8 +1,4 @@
-host: 127.0.0.1
-log_level: info
 inbox_bucket: test-inbox
-port: 8080
-retry_access_after: 120
 s3_endpoint_url: http://localhost:4566
 s3_secret_access_key: test
 s3_session_token: test
@@ -10,8 +6,9 @@ s3_access_key_id: test
 service_name: irs
 service_instance_id: 001
 kafka_servers: ["kafka:9092"]
-upload_accepted_event_type: file_uploads
-upload_accepted_event_topic: file_upload_received
+upload_received_event_type: file_uploads
+upload_received_event_topic: file_upload_received
 files_to_register_type: file_interrogation
 files_to_register_success_topic: file_validation_success
 files_to_register_failure_topic: file_validation_failure
+eks_url: http://127.0.0.1/eks

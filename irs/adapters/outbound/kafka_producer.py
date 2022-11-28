@@ -27,23 +27,23 @@ class EventPubTanslatorConfig(BaseSettings):
     """Config for publishing file upload-related events."""
 
     files_to_register_success_topic: str = Field(
-        ...,
+        "file_validation_success",
         description=(
             "The name of the topic to receive events informing about new files to register."
         ),
-        example="file_ingestion",
+        example="file_validation_success",
     )
     files_to_register_failure_topic: str = Field(
-        ...,
+        "file_validation_failure",
         description=(
             "The name of the topic to receive events informing about new files to register."
         ),
-        example="file_ingestion",
+        example="file_validation_failure",
     )
     files_to_register_type: str = Field(
-        ...,
+        "file_interrogation",
         description=("The type used for events informing about new files to register."),
-        example="files_to_register",
+        example="file_interrogation",
     )
 
 
