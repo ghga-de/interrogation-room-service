@@ -47,7 +47,7 @@ class EventPubTanslatorConfig(BaseSettings):
     )
 
 
-class EventPubTranslator(EventPublisherPort):
+class EventPublisher(EventPublisherPort):
     """Contains details for successfully checksum validated file processing"""
 
     def __init__(

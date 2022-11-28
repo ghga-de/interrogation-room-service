@@ -20,7 +20,7 @@ from hexkit.providers.akafka.testutils import KafkaFixture
 from testcontainers.kafka import KafkaContainer
 
 from irs.adapters.inbound.kafka_ucs_consumer import EventSubTranslator
-from irs.adapters.outbound.kafka_producer import EventPubTranslator
+from irs.adapters.outbound.kafka_producer import EventPublisher
 from irs.core.upload_handler import UploadHandler
 from tests.fixtures.config import DEFAULT_CONFIG
 
@@ -31,7 +31,7 @@ class IRSKafkaFixture(KafkaFixture):
     def __init__(
         self,
         kafka_servers: list[str],
-        publisher: EventPubTranslator,
+        publisher: EventPublisher,
         subscriber: EventSubTranslator,
     ):
         """Initialize with connection details and a ready-to-use publisher and subscriber"""

@@ -29,9 +29,9 @@ from irs.adapters.inbound.s3_download import (
     retrieve_part,
     retrieve_parts,
 )
+from irs.adapters.outbound.kafka_producer import EventPublisher
 from irs.config import CONFIG
 from irs.ports.inbound.upload_handler import UploadHandlerPort
-from irs.ports.outbound.event_pub import EventPublisherPort
 
 
 class UploadHandler(UploadHandlerPort):
@@ -40,7 +40,7 @@ class UploadHandler(UploadHandlerPort):
     def __init__(
         self,
         *,
-        event_publisher: EventPublisherPort,
+        event_publisher: EventPublisher,
     ):
         """Initialize class instance with configs and outbound adapter objects."""
         self._event_publisher = event_publisher
