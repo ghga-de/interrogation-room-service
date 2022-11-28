@@ -20,9 +20,11 @@ from ghga_service_chassis_lib.s3 import S3ConfigBase
 from hexkit.providers.akafka import KafkaConfig
 from pydantic import Field
 
+from irs.adapters.inbound.kafka_ucs_consumer import EventSubTanslatorConfig
+
 
 @config_from_yaml(prefix="irs")
-class Config(KafkaConfig, S3ConfigBase):
+class Config(KafkaConfig, S3ConfigBase, EventSubTanslatorConfig):
     """Config parameters and their defaults."""
 
     service_name: str = "interrogation_room"

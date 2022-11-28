@@ -43,7 +43,7 @@ class EncryptedDataFixture:
     checksum: str
     file_secret: bytes
     file_size: int
-    upload_date: datetime
+    upload_date: str
     offset: int
     public_key: bytes
     s3_fixture: S3Fixture
@@ -60,7 +60,7 @@ async def encrypted_random_data(
         # rewind data pointer
         data.seek(0)
         with tempfile.NamedTemporaryFile() as encrypted_file:
-            upload_date = datetime.utcnow()
+            upload_date = datetime.utcnow().isoformat()
             private_key = generate_keypair_fixture.private_key
             public_key = generate_keypair_fixture.public_key
             enc_keys = [(0, private_key, public_key)]

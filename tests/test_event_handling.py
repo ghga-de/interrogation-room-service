@@ -70,9 +70,6 @@ async def test_failure_event(
             encrypted_random_data.offset,
         )
 
-    async def publisher_patch():
-        return irs_kafka_fixture.publisher
-
     monkeypatch.setattr(
         "irs.core.upload_handler.call_eks_api",
         eks_patch,
@@ -80,9 +77,6 @@ async def test_failure_event(
     monkeypatch.setattr(
         "irs.adapters.inbound.s3_download.get_objectstorage",
         lambda: encrypted_random_data.s3_fixture.storage,
-    )
-    monkeypatch.setattr(
-        "irs.adapters.outbound.kafka_producer.get_publisher", publisher_patch
     )
 
     payload_in = incoming_payload(encrypted_random_data)
@@ -132,9 +126,6 @@ async def test_success_event(
             encrypted_random_data.offset,
         )
 
-    async def publisher_patch():
-        return irs_kafka_fixture.publisher
-
     monkeypatch.setattr(
         "irs.core.upload_handler.call_eks_api",
         eks_patch,
@@ -142,9 +133,6 @@ async def test_success_event(
     monkeypatch.setattr(
         "irs.adapters.inbound.s3_download.get_objectstorage",
         lambda: encrypted_random_data.s3_fixture.storage,
-    )
-    monkeypatch.setattr(
-        "irs.adapters.outbound.kafka_producer.get_publisher", publisher_patch
     )
 
     payload_in = incoming_payload(encrypted_random_data)

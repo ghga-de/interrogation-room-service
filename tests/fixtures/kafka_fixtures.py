@@ -23,7 +23,10 @@ from hexkit.providers.akafka import (
 from hexkit.providers.akafka.testutils import KafkaFixture
 from testcontainers.kafka import KafkaContainer
 
-from irs.adapters.inbound.kafka_ucs_consumer import UploadTaskReceiver
+from irs.adapters.inbound.kafka_ucs_consumer import (
+    EventSubTanslatorConfig,
+    UploadTaskReceiver,
+)
 from irs.core.upload_handler import UploadHandler
 
 
@@ -47,17 +50,19 @@ async def irs_kafka_fixture():
     """Configure Kafka subscriber/publisher"""
     with KafkaContainer() as kafka_container:
         kafka_servers = [kafka_container.get_bootstrap_server()]
-        config = KafkaConfig(
+        kafka_config = KafkaConfig(
             service_name="irs_test_publisher",
             service_instance_id="001",
             kafka_servers=kafka_servers,
         )
-        async with KafkaEventPublisher.construct(config=config) as publisher:
+        async with KafkaEventPublisher.construct(config=kafka_config) as publisher:
             upload_handler = UploadHandler(event_publisher=publisher)
+            event_sub_config = EventSubTanslatorConfig()
+
             async with KafkaEventSubscriber.construct(
-                config=config,
+                config=kafka_config,
                 translator=UploadTaskReceiver(
-                    config=config, upload_handler=upload_handler
+                    config=event_sub_config, upload_handler=upload_handler
                 ),
             ) as subscriber:
                 yield IRSKafkaFixture(
