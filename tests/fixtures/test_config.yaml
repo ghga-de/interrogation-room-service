@@ -6,9 +6,4 @@ s3_access_key_id: test
 service_name: irs
 service_instance_id: 001
 kafka_servers: ["kafka:9092"]
-upload_received_event_type: file_uploads
-upload_received_event_topic: file_upload_received
-files_to_register_type: file_interrogation
-files_to_register_success_topic: file_validation_success
-files_to_register_failure_topic: file_validation_failure
 eks_url: http://127.0.0.1/eks
