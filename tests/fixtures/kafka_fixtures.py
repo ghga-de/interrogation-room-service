@@ -31,8 +31,8 @@ class IRSKafkaFixture(KafkaFixture):
     def __init__(
         self,
         kafka_servers: list[str],
-        publisher: EventPublisher,
-        subscriber: EventSubTranslator,
+        publisher: KafkaEventPublisher,
+        subscriber: KafkaEventSubscriber,
     ):
         """Initialize with connection details and a ready-to-use publisher and subscriber"""
         self.kafka_servers = kafka_servers
@@ -48,8 +48,8 @@ async def irs_kafka_fixture():
         config = DEFAULT_CONFIG
         config.kafka_servers = kafka_servers
 
-        async with KafkaEventPublisher.construct(config=config) as provider:
-            publisher = EventPublisher(config=config, provider=provider)
+        async with KafkaEventPublisher.construct(config=config) as publish_provider:
+            publisher = EventPublisher(config=config, provider=publish_provider)
             upload_handler = UploadHandler(event_publisher=publisher)
 
             async with KafkaEventSubscriber.construct(
@@ -60,6 +60,6 @@ async def irs_kafka_fixture():
             ) as subscriber:
                 yield IRSKafkaFixture(
                     kafka_servers=kafka_servers,
-                    publisher=publisher,
+                    publisher=publish_provider,
                     subscriber=subscriber,
                 )
