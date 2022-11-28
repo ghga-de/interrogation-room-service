@@ -3,21 +3,51 @@
   "description": "Modifies the orginal Settings class provided by the user",
   "type": "object",
   "properties": {
-    "upload_received_event_topic": {
-      "title": "Upload Received Event Topic",
-      "description": "Name of the topic to publish event that inform about new file uploads.",
-      "default": "file_uploads",
+    "files_to_register_success_topic": {
+      "title": "Files To Register Success Topic",
+      "description": "The name of the topic to receive events informing about new files to register.",
+      "default": "file_validation_success",
+      "example": "file_validation_success",
       "env_names": [
-        "irs_upload_received_event_topic"
+        "irs_files_to_register_success_topic"
+      ],
+      "type": "string"
+    },
+    "files_to_register_failure_topic": {
+      "title": "Files To Register Failure Topic",
+      "description": "The name of the topic to receive events informing about new files to register.",
+      "default": "file_validation_failure",
+      "example": "file_validation_failure",
+      "env_names": [
+        "irs_files_to_register_failure_topic"
+      ],
+      "type": "string"
+    },
+    "files_to_register_type": {
+      "title": "Files To Register Type",
+      "description": "The type used for events informing about new files to register.",
+      "default": "file_interrogation",
+      "example": "file_interrogation",
+      "env_names": [
+        "irs_files_to_register_type"
       ],
       "type": "string"
     },
     "upload_received_event_type": {
       "title": "Upload Received Event Type",
+      "description": "Name of the topic to publish event that inform about new file uploads.",
+      "default": "file_uploads",
+      "env_names": [
+        "irs_upload_received_event_type"
+      ],
+      "type": "string"
+    },
+    "upload_received_event_topic": {
+      "title": "Upload Received Event Topic",
       "description": "The type to use for event that inform about new file uploads.",
       "default": "file_upload_received",
       "env_names": [
-        "irs_upload_received_event_type"
+        "irs_upload_received_event_topic"
       ],
       "type": "string"
     },

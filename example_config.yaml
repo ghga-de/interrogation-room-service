@@ -1,8 +1,11 @@
 aws_config_ini: null
 eks_url: http://127.0.0.1/eks
+files_to_register_failure_topic: file_validation_failure
+files_to_register_success_topic: file_validation_success
+files_to_register_type: file_interrogation
 inbox_bucket: test-bucket
 kafka_servers:
-  - localhost:9092
+- localhost:9092
 s3_access_key_id: test
 s3_endpoint_url: http://localstack:4566
 s3_secret_access_key: test
