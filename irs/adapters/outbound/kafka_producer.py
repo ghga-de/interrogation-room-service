@@ -50,7 +50,7 @@ class EventPubTanslatorConfig(BaseSettings):
 
 
 class EventPublisher(EventPublisherPort):
-    """Contains details for successfully checksum validated file processing"""
+    """Contains details for event publishing at the end of file validation"""
 
     def __init__(
         self, *, config: EventPubTanslatorConfig, provider: EventPublisherProtocol
