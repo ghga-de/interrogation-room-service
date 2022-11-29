@@ -43,7 +43,7 @@ class EventPubTanslatorConfig(BaseSettings):
     files_to_register_topic: str = Field(
         "file_interrogation",
         description=(
-            "The topics used for events informing about the outcome of file validations."
+            "Name of the topic used for events informing about the outcome of file validations."
         ),
         example="file_interrogation",
     )
