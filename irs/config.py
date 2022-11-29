@@ -39,10 +39,6 @@ class Config(
         example="http://127.0.0.1/eks",
         description=("URL pointing to the Encryption Key Store service."),
     )
-    topic: str = Field(
-        "file_interrogation",
-        description=("Topic for Kafka events published by this service"),
-    )
 
 
 CONFIG = Config()

@@ -26,21 +26,21 @@ from irs.ports.outbound.event_pub import EventPublisherPort
 class EventPubTanslatorConfig(BaseSettings):
     """Config for publishing file upload-related events."""
 
-    files_to_register_success_topic: str = Field(
+    files_to_register_success_type: str = Field(
         "file_validation_success",
         description=(
             "The name of the topic to receive events informing about new files to register."
         ),
         example="file_validation_success",
     )
-    files_to_register_failure_topic: str = Field(
+    files_to_register_failure_type: str = Field(
         "file_validation_failure",
         description=(
             "The name of the topic to receive events informing about new files to register."
         ),
         example="file_validation_failure",
     )
-    files_to_register_type: str = Field(
+    files_to_register_topic: str = Field(
         "file_interrogation",
         description=("The type used for events informing about new files to register."),
         example="file_interrogation",
@@ -86,8 +86,8 @@ class EventPublisher(EventPublisherPort):
         ).dict()
         await self._provider.publish(
             payload=event_payload,
-            type_=self._config.files_to_register_type,
-            topic=self._config.files_to_register_success_topic,
+            type_=self._config.files_to_register_success_type,
+            topic=self._config.files_to_register_topic,
             key=file_id,
         )
 
@@ -109,7 +109,7 @@ class EventPublisher(EventPublisherPort):
         ).dict()
         await self._provider.publish(
             payload=event_payload,
-            type_=self._config.files_to_register_type,
-            topic=self._config.files_to_register_failure_topic,
+            type_=self._config.files_to_register_failure_type,
+            topic=self._config.files_to_register_topic,
             key=file_id,
         )

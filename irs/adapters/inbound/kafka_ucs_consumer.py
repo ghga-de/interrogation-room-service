@@ -26,13 +26,13 @@ from irs.ports.inbound.upload_handler import UploadHandlerPort
 class EventSubTanslatorConfig(BaseSettings):
     """Config for publishing file upload-related events."""
 
-    upload_received_event_type: str = Field(
+    upload_received_event_topic: str = Field(
         "file_uploads",
         description=(
             "Name of the topic to publish event that inform about new file uploads."
         ),
     )
-    upload_received_event_topic: str = Field(
+    upload_received_event_type: str = Field(
         "file_upload_received",
         description="The type to use for event that inform about new file uploads.",
     )
