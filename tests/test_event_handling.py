@@ -21,6 +21,7 @@ from hexkit.providers.akafka.testutils import ExpectedEvent
 from hexkit.providers.s3.testutils import s3_fixture  # noqa: F401
 from hexkit.utils import calc_part_size
 
+from tests.fixtures.config import Config
 from tests.fixtures.file_fixtures import encrypted_random_data  # noqa: F401
 from tests.fixtures.file_fixtures import OBJECT_ID, EncryptedDataFixture
 from tests.fixtures.kafka_fixtures import (  # noqa: F401
@@ -30,11 +31,13 @@ from tests.fixtures.kafka_fixtures import (  # noqa: F401
 from tests.fixtures.keypair_fixtures import generate_keypair_fixture  # noqa: F401
 
 
-def incoming_irs_event(payload: dict[str, object]) -> Mapping[str, Collection[str]]:
+def incoming_irs_event(
+    payload: dict[str, object], config: Config
+) -> Mapping[str, Collection[str]]:
     """Emulate incoming event from ucs"""
-    type_ = "file_uploads"
+    type_ = config.upload_received_event_type
     key = OBJECT_ID
-    topic = "file_upload_received"
+    topic = config.upload_received_event_topic
     event = {"payload": payload, "type_": type_, "key": key, "topic": topic}
     return event
 
@@ -84,7 +87,7 @@ async def test_failure_event(
     payload_in["expected_decrypted_sha256"] = payload_in["expected_decrypted_sha256"][
         1:
     ]
-    event_in = incoming_irs_event(payload=payload_in)
+    event_in = incoming_irs_event(payload=payload_in, config=irs_kafka_fixture.config)
 
     payload_out = {
         "file_id": OBJECT_ID,
@@ -138,7 +141,7 @@ async def test_success_event(
     )
 
     payload_in = incoming_payload(encrypted_random_data)
-    event_in = incoming_irs_event(payload=payload_in)
+    event_in = incoming_irs_event(payload=payload_in, config=irs_kafka_fixture.config)
 
     part_size = calc_part_size(file_size=encrypted_random_data.file_size)
 
@@ -154,7 +157,7 @@ async def test_success_event(
     }
     expected_event_out = ExpectedEvent(
         payload=payload_out,
-        type_=irs_kafka_fixture.config.file_to_register_success_type,
+        type_=irs_kafka_fixture.config.files_to_register_success_type,
         key="test-object",
     )
 
