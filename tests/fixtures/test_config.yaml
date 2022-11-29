@@ -1,7 +1,6 @@
 inbox_bucket: test-inbox
 s3_endpoint_url: http://localhost:4566
 s3_secret_access_key: test
-s3_session_token: test
 s3_access_key_id: test
 service_name: irs
 service_instance_id: 001
