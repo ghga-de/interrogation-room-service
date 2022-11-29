@@ -22,7 +22,7 @@ from testcontainers.kafka import KafkaContainer
 from irs.adapters.inbound.kafka_ucs_consumer import EventSubTranslator
 from irs.adapters.outbound.kafka_producer import EventPublisher
 from irs.core.upload_handler import UploadHandler
-from tests.fixtures.config import DEFAULT_CONFIG
+from tests.fixtures.config import DEFAULT_CONFIG, Config
 
 
 class IRSKafkaFixture(KafkaFixture):
@@ -33,11 +33,13 @@ class IRSKafkaFixture(KafkaFixture):
         kafka_servers: list[str],
         publisher: KafkaEventPublisher,
         subscriber: KafkaEventSubscriber,
+        config: Config,
     ):
         """Initialize with connection details and a ready-to-use publisher and subscriber"""
         self.kafka_servers = kafka_servers
         self.publisher = publisher
         self.subscriber = subscriber
+        self.config = config
 
 
 @pytest_asyncio.fixture
@@ -62,4 +64,5 @@ async def irs_kafka_fixture():
                     kafka_servers=kafka_servers,
                     publisher=publish_provider,
                     subscriber=subscriber,
+                    config=config,
                 )
