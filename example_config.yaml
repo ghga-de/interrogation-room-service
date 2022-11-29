@@ -1,8 +1,8 @@
 aws_config_ini: null
 eks_url: http://127.0.0.1/eks
-files_to_register_failure_topic: file_validation_failure
-files_to_register_success_topic: file_validation_success
-files_to_register_type: file_interrogation
+files_to_register_failure_type: file_validation_failure
+files_to_register_success_type: file_validation_success
+files_to_register_topic: file_interrogation
 inbox_bucket: test-bucket
 kafka_servers:
 - localhost:9092
@@ -12,6 +12,5 @@ s3_secret_access_key: test
 s3_session_token: null
 service_instance_id: interrogation_room-001
 service_name: interrogation_room
-topic: file_interrogation
-upload_received_event_topic: file_upload_received
-upload_received_event_type: file_uploads
+upload_received_event_topic: file_uploads
+upload_received_event_type: file_upload_received
