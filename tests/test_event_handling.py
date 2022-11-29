@@ -96,12 +96,12 @@ async def test_failure_event(
     }
     expected_event_out = ExpectedEvent(
         payload=payload_out,
-        type_=irs_kafka_fixture.config.files_to_register_failure_type,
+        type_=irs_kafka_fixture.config.interrogations_failure_type,
         key=OBJECT_ID,
     )
 
     async with irs_kafka_fixture.record_events(
-        in_topic=irs_kafka_fixture.config.files_to_register_topic,
+        in_topic=irs_kafka_fixture.config.interrogations_topic,
     ) as event_recorder:
         await irs_kafka_fixture.publish_event(**event_in)
         await irs_kafka_fixture.subscriber.run(forever=False)
@@ -156,12 +156,12 @@ async def test_success_event(
     }
     expected_event_out = ExpectedEvent(
         payload=payload_out,
-        type_=irs_kafka_fixture.config.files_to_register_success_type,
+        type_=irs_kafka_fixture.config.interrogations_success_type,
         key="test-object",
     )
 
     async with irs_kafka_fixture.record_events(
-        in_topic=irs_kafka_fixture.config.files_to_register_topic,
+        in_topic=irs_kafka_fixture.config.interrogations_topic,
     ) as event_recorder:
         await irs_kafka_fixture.publish_event(**event_in)
         await irs_kafka_fixture.subscriber.run(forever=False)
