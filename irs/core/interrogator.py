@@ -35,7 +35,7 @@ from irs.ports.outbound.event_pub import EventPublisherPort
 
 
 class Interrogator(InterrogatorPort):
-    """A service that validates the content of encrypted files and performs a re-encryption."""
+    """A service that validates the content of encrypted files"""
 
     def __init__(
         self,

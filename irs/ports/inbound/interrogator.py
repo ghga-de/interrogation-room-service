@@ -21,8 +21,7 @@ from datetime import datetime
 
 class InterrogatorPort(ABC):
     """
-    The interface of a service for validating the content of encrypted files
-    and for performing re-encryption.
+    The interface of a service for validating the content of encrypted files.
     """
 
     @abstractmethod
