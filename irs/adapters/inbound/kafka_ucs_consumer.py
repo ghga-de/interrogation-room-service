@@ -29,12 +29,12 @@ class EventSubTanslatorConfig(BaseSettings):
     upload_received_event_topic: str = Field(
         "file_uploads",
         description=(
-            "Name of the topic to publish event that inform about new file uploads."
+            "Name of the topic to publish events that inform about new file uploads."
         ),
     )
     upload_received_event_type: str = Field(
         "file_upload_received",
-        description="The type to use for event that inform about new file uploads.",
+        description="The type to use for events that inform about new file uploads.",
     )
 
 

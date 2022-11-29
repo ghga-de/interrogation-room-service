@@ -29,20 +29,22 @@ class EventPubTanslatorConfig(BaseSettings):
     files_to_register_success_type: str = Field(
         "file_validation_success",
         description=(
-            "The name of the topic to receive events informing about new files to register."
+            "The type used for events informing about the success of a file validation."
         ),
         example="file_validation_success",
     )
     files_to_register_failure_type: str = Field(
         "file_validation_failure",
         description=(
-            "The name of the topic to receive events informing about new files to register."
+            "The type used for events informing about the failure of a file validation."
         ),
         example="file_validation_failure",
     )
     files_to_register_topic: str = Field(
         "file_interrogation",
-        description=("The type used for events informing about new files to register."),
+        description=(
+            "The topics used for events informing about the outcome of file validations."
+        ),
         example="file_interrogation",
     )
 

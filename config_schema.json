@@ -5,7 +5,7 @@
   "properties": {
     "files_to_register_success_type": {
       "title": "Files To Register Success Type",
-      "description": "The name of the topic to receive events informing about new files to register.",
+      "description": "The type used for events informing about the success of a file validation.",
       "default": "file_validation_success",
       "example": "file_validation_success",
       "env_names": [
@@ -15,7 +15,7 @@
     },
     "files_to_register_failure_type": {
       "title": "Files To Register Failure Type",
-      "description": "The name of the topic to receive events informing about new files to register.",
+      "description": "The type used for events informing about the failure of a file validation.",
       "default": "file_validation_failure",
       "example": "file_validation_failure",
       "env_names": [
@@ -25,7 +25,7 @@
     },
     "files_to_register_topic": {
       "title": "Files To Register Topic",
-      "description": "The type used for events informing about new files to register.",
+      "description": "The topics used for events informing about the outcome of file validations.",
       "default": "file_interrogation",
       "example": "file_interrogation",
       "env_names": [
@@ -35,7 +35,7 @@
     },
     "upload_received_event_topic": {
       "title": "Upload Received Event Topic",
-      "description": "Name of the topic to publish event that inform about new file uploads.",
+      "description": "Name of the topic to publish events that inform about new file uploads.",
       "default": "file_uploads",
       "env_names": [
         "irs_upload_received_event_topic"
@@ -44,7 +44,7 @@
     },
     "upload_received_event_type": {
       "title": "Upload Received Event Type",
-      "description": "The type to use for event that inform about new file uploads.",
+      "description": "The type to use for events that inform about new file uploads.",
       "default": "file_upload_received",
       "env_names": [
         "irs_upload_received_event_type"
