@@ -92,6 +92,7 @@ async def test_failure_event(
     payload_out = {
         "file_id": OBJECT_ID,
         "reason": "Checksum mismatch",
+        "upload_date": encrypted_random_data.upload_date,
     }
     expected_event_out = ExpectedEvent(
         payload=payload_out,
