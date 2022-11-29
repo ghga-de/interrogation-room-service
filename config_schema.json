@@ -3,33 +3,33 @@
   "description": "Modifies the orginal Settings class provided by the user",
   "type": "object",
   "properties": {
-    "files_to_register_success_type": {
-      "title": "Files To Register Success Type",
+    "interrogations_success_type": {
+      "title": "Interrogations Success Type",
       "description": "The type used for events informing about the success of a file validation.",
-      "default": "file_validation_success",
+      "default": "file_interrogation_success",
       "example": "file_validation_success",
       "env_names": [
-        "irs_files_to_register_success_type"
+        "irs_interrogations_success_type"
       ],
       "type": "string"
     },
-    "files_to_register_failure_type": {
-      "title": "Files To Register Failure Type",
+    "interrogations_failure_type": {
+      "title": "Interrogations Failure Type",
       "description": "The type used for events informing about the failure of a file validation.",
       "default": "file_validation_failure",
       "example": "file_validation_failure",
       "env_names": [
-        "irs_files_to_register_failure_type"
+        "irs_interrogations_failure_type"
       ],
       "type": "string"
     },
-    "files_to_register_topic": {
-      "title": "Files To Register Topic",
-      "description": "The topics used for events informing about the outcome of file validations.",
+    "interrogations_topic": {
+      "title": "Interrogations Topic",
+      "description": "Name of the topic used for events informing about the outcome of file validations.",
       "default": "file_interrogation",
       "example": "file_interrogation",
       "env_names": [
-        "irs_files_to_register_topic"
+        "irs_interrogations_topic"
       ],
       "type": "string"
     },
