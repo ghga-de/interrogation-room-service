@@ -14,6 +14,7 @@
 # limitations under the License.
 """KafkaEventPublisher for file upload validation success/failure event details"""
 
+import json
 from datetime import datetime
 
 from ghga_event_schemas import pydantic_ as event_schemas
@@ -26,21 +27,21 @@ from irs.ports.outbound.event_pub import EventPublisherPort
 class EventPubTanslatorConfig(BaseSettings):
     """Config for publishing file upload-related events."""
 
-    files_to_register_success_type: str = Field(
-        "file_validation_success",
+    interrogations_success_type: str = Field(
+        "file_interrogation_success",
         description=(
             "The type used for events informing about the success of a file validation."
         ),
         example="file_validation_success",
     )
-    files_to_register_failure_type: str = Field(
+    interrogations_failure_type: str = Field(
         "file_validation_failure",
         description=(
             "The type used for events informing about the failure of a file validation."
         ),
         example="file_validation_failure",
     )
-    files_to_register_topic: str = Field(
+    interrogations_topic: str = Field(
         "file_interrogation",
         description=(
             "Name of the topic used for events informing about the outcome of file validations."
@@ -85,11 +86,11 @@ class EventPublisher(EventPublisherPort):
             encrypted_parts_md5=part_checksums_md5,
             encrypted_parts_sha256=part_checksums_sha256,
             decrypted_sha256=content_checksum_sha256,
-        ).dict()
+        )
         await self._provider.publish(
-            payload=event_payload,
-            type_=self._config.files_to_register_success_type,
-            topic=self._config.files_to_register_topic,
+            payload=json.loads(event_payload.json()),
+            type_=self._config.interrogations_success_type,
+            topic=self._config.interrogations_topic,
             key=file_id,
         )
 
@@ -108,10 +109,10 @@ class EventPublisher(EventPublisherPort):
             file_id=file_id,
             upload_date=upload_date,
             reason=cause,
-        ).dict()
+        )
         await self._provider.publish(
-            payload=event_payload,
-            type_=self._config.files_to_register_failure_type,
-            topic=self._config.files_to_register_topic,
+            payload=json.loads(event_payload.json()),
+            type_=self._config.interrogations_failure_type,
+            topic=self._config.interrogations_topic,
             key=file_id,
         )

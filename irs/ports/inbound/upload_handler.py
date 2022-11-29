@@ -24,7 +24,7 @@ class UploadHandlerPort(ABC):
     """A Service that validates uploaded files"""
 
     @abstractmethod
-    async def process_new_upload(  # pylint: disable=too-many-locals
+    async def interrogate(  # pylint: disable=too-many-locals
         self,
         *,
         object_id: str,

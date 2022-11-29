@@ -75,7 +75,7 @@ class EventSubTranslator(EventSubscriberProtocol):
             schema=event_schemas.FileUploadReceived,
         )
 
-        await self._upload_handler.process_new_upload(
+        await self._upload_handler.interrogate(
             object_id=validated_payload.file_id,
             public_key=validated_payload.submitter_public_key,
             upload_date=validated_payload.upload_date,

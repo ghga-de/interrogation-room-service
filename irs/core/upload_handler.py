@@ -45,7 +45,7 @@ class UploadHandler(UploadHandlerPort):
         """Initialize class instance with configs and outbound adapter objects."""
         self._event_publisher = event_publisher
 
-    async def process_new_upload(  # pylint: disable=too-many-locals
+    async def interrogate(  # pylint: disable=too-many-locals
         self,
         *,
         object_id: str,
