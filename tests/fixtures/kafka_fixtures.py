@@ -15,15 +15,14 @@
 """Fixtures and classes to test kafka communication"""
 
 import pytest_asyncio
-from hexkit.providers.akafka import (
-    KafkaConfig,
-    KafkaEventPublisher,
-    KafkaEventSubscriber,
-)
+from hexkit.providers.akafka import KafkaEventPublisher, KafkaEventSubscriber
 from hexkit.providers.akafka.testutils import KafkaFixture
 from testcontainers.kafka import KafkaContainer
 
-from irs.adapters.inbound.kafka_ucs_consumer import UploadTaskReceiver
+from irs.adapters.inbound.kafka_ucs_consumer import EventSubTranslator
+from irs.adapters.outbound.kafka_producer import EventPublisher
+from irs.core.interrogator import Interrogator
+from tests.fixtures.config import DEFAULT_CONFIG, Config
 
 
 class IRSKafkaFixture(KafkaFixture):
@@ -34,11 +33,13 @@ class IRSKafkaFixture(KafkaFixture):
         kafka_servers: list[str],
         publisher: KafkaEventPublisher,
         subscriber: KafkaEventSubscriber,
+        config: Config,
     ):
         """Initialize with connection details and a ready-to-use publisher and subscriber"""
         self.kafka_servers = kafka_servers
         self.publisher = publisher
         self.subscriber = subscriber
+        self.config = config
 
 
 @pytest_asyncio.fixture
@@ -46,17 +47,20 @@ async def irs_kafka_fixture():
     """Configure Kafka subscriber/publisher"""
     with KafkaContainer() as kafka_container:
         kafka_servers = [kafka_container.get_bootstrap_server()]
-        config = KafkaConfig(
-            service_name="irs_test_publisher",
-            service_instance_id="001",
-            kafka_servers=kafka_servers,
-        )
-        async with KafkaEventPublisher.construct(config=config) as publisher:
+        config = DEFAULT_CONFIG
+        config.kafka_servers = kafka_servers
+
+        async with KafkaEventPublisher.construct(config=config) as publish_provider:
+            publisher = EventPublisher(config=config, provider=publish_provider)
+            interrogator = Interrogator(event_publisher=publisher)
+
             async with KafkaEventSubscriber.construct(
-                config=config, translator=UploadTaskReceiver()
+                config=config,
+                translator=EventSubTranslator(config=config, interrogator=interrogator),
             ) as subscriber:
                 yield IRSKafkaFixture(
                     kafka_servers=kafka_servers,
-                    publisher=publisher,
+                    publisher=publish_provider,
                     subscriber=subscriber,
+                    config=config,
                 )

@@ -3,6 +3,54 @@
   "description": "Modifies the orginal Settings class provided by the user",
   "type": "object",
   "properties": {
+    "interrogations_success_type": {
+      "title": "Interrogations Success Type",
+      "description": "The type used for events informing about the success of a file validation.",
+      "default": "file_interrogation_success",
+      "example": "file_validation_success",
+      "env_names": [
+        "irs_interrogations_success_type"
+      ],
+      "type": "string"
+    },
+    "interrogations_failure_type": {
+      "title": "Interrogations Failure Type",
+      "description": "The type used for events informing about the failure of a file validation.",
+      "default": "file_validation_failure",
+      "example": "file_validation_failure",
+      "env_names": [
+        "irs_interrogations_failure_type"
+      ],
+      "type": "string"
+    },
+    "interrogations_topic": {
+      "title": "Interrogations Topic",
+      "description": "Name of the topic used for events informing about the outcome of file validations.",
+      "default": "file_interrogation",
+      "example": "file_interrogation",
+      "env_names": [
+        "irs_interrogations_topic"
+      ],
+      "type": "string"
+    },
+    "upload_received_event_topic": {
+      "title": "Upload Received Event Topic",
+      "description": "Name of the topic to publish events that inform about new file uploads.",
+      "default": "file_uploads",
+      "env_names": [
+        "irs_upload_received_event_topic"
+      ],
+      "type": "string"
+    },
+    "upload_received_event_type": {
+      "title": "Upload Received Event Type",
+      "description": "The type to use for events that inform about new file uploads.",
+      "default": "file_upload_received",
+      "env_names": [
+        "irs_upload_received_event_type"
+      ],
+      "type": "string"
+    },
     "s3_endpoint_url": {
       "title": "S3 Endpoint Url",
       "description": "URL to the S3 API.",
@@ -95,15 +143,6 @@
       "example": "http://127.0.0.1/eks",
       "env_names": [
         "irs_eks_url"
-      ],
-      "type": "string"
-    },
-    "topic": {
-      "title": "Topic",
-      "description": "Topic for Kafka events published by this service",
-      "default": "file_interrogation",
-      "env_names": [
-        "irs_topic"
       ],
       "type": "string"
     }

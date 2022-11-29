@@ -1,0 +1,8 @@
+inbox_bucket: test-inbox
+s3_endpoint_url: http://localhost:4566
+s3_secret_access_key: test
+s3_access_key_id: test
+service_name: irs
+service_instance_id: 001
+kafka_servers: ["kafka:9092"]
+eks_url: http://127.0.0.1/eks

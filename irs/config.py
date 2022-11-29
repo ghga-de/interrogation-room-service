@@ -20,9 +20,14 @@ from ghga_service_chassis_lib.s3 import S3ConfigBase
 from hexkit.providers.akafka import KafkaConfig
 from pydantic import Field
 
+from irs.adapters.inbound.kafka_ucs_consumer import EventSubTanslatorConfig
+from irs.adapters.outbound.kafka_producer import EventPubTanslatorConfig
+
 
 @config_from_yaml(prefix="irs")
-class Config(KafkaConfig, S3ConfigBase):
+class Config(
+    KafkaConfig, S3ConfigBase, EventSubTanslatorConfig, EventPubTanslatorConfig
+):
     """Config parameters and their defaults."""
 
     service_name: str = "interrogation_room"
@@ -33,10 +38,6 @@ class Config(KafkaConfig, S3ConfigBase):
         ...,
         example="http://127.0.0.1/eks",
         description=("URL pointing to the Encryption Key Store service."),
-    )
-    topic: str = Field(
-        "file_interrogation",
-        description=("Topic for Kafka events published by this service"),
     )
 
 

@@ -21,6 +21,7 @@ from hexkit.providers.akafka.testutils import ExpectedEvent
 from hexkit.providers.s3.testutils import s3_fixture  # noqa: F401
 from hexkit.utils import calc_part_size
 
+from tests.fixtures.config import Config
 from tests.fixtures.file_fixtures import encrypted_random_data  # noqa: F401
 from tests.fixtures.file_fixtures import OBJECT_ID, EncryptedDataFixture
 from tests.fixtures.kafka_fixtures import (  # noqa: F401
@@ -30,11 +31,13 @@ from tests.fixtures.kafka_fixtures import (  # noqa: F401
 from tests.fixtures.keypair_fixtures import generate_keypair_fixture  # noqa: F401
 
 
-def incoming_irs_event(payload: dict[str, object]) -> Mapping[str, Collection[str]]:
+def incoming_irs_event(
+    payload: dict[str, object], config: Config
+) -> Mapping[str, Collection[str]]:
     """Emulate incoming event from ucs"""
-    type_ = "ucs"
+    type_ = config.upload_received_event_type
     key = OBJECT_ID
-    topic = "file_upload_received"
+    topic = config.upload_received_event_topic
     event = {"payload": payload, "type_": type_, "key": key, "topic": topic}
     return event
 
@@ -43,9 +46,10 @@ def incoming_payload(data: EncryptedDataFixture) -> dict[str, Any]:
     """Payload arriving at the interrogation room"""
     return {
         "file_id": OBJECT_ID,
-        "public_key": base64.b64encode(data.public_key).decode("utf-8"),
-        "sha256_checksum": data.checksum,
-        "size": data.file_size,
+        "submitter_public_key": base64.b64encode(data.public_key).decode("utf-8"),
+        "upload_date": data.upload_date,
+        "expected_decrypted_sha256": data.checksum,
+        "decrypted_size": data.file_size,
     }
 
 
@@ -69,36 +73,35 @@ async def test_failure_event(
             encrypted_random_data.offset,
         )
 
-    async def publisher_patch():
-        return irs_kafka_fixture.publisher
-
     monkeypatch.setattr(
-        "irs.core.upload_handler.call_eks_api",
+        "irs.core.interrogator.call_eks_api",
         eks_patch,
     )
     monkeypatch.setattr(
         "irs.adapters.inbound.s3_download.get_objectstorage",
         lambda: encrypted_random_data.s3_fixture.storage,
     )
-    monkeypatch.setattr(
-        "irs.adapters.outbound.kafka_producer.get_publisher", publisher_patch
-    )
 
     payload_in = incoming_payload(encrypted_random_data)
     # introduce invalid checksum
-    payload_in["sha256_checksum"] = payload_in["sha256_checksum"][1:]
-    event_in = incoming_irs_event(payload=payload_in)
+    payload_in["expected_decrypted_sha256"] = payload_in["expected_decrypted_sha256"][
+        1:
+    ]
+    event_in = incoming_irs_event(payload=payload_in, config=irs_kafka_fixture.config)
 
     payload_out = {
         "file_id": OBJECT_ID,
-        "cause": "Checksum mismatch",
+        "reason": "Checksum mismatch",
+        "upload_date": encrypted_random_data.upload_date,
     }
     expected_event_out = ExpectedEvent(
-        payload=payload_out, type_="upload_validation_failure", key=OBJECT_ID
+        payload=payload_out,
+        type_=irs_kafka_fixture.config.interrogations_failure_type,
+        key=OBJECT_ID,
     )
 
     async with irs_kafka_fixture.record_events(
-        in_topic="file_interrogation",
+        in_topic=irs_kafka_fixture.config.interrogations_topic,
     ) as event_recorder:
         await irs_kafka_fixture.publish_event(**event_in)
         await irs_kafka_fixture.subscriber.run(forever=False)
@@ -129,39 +132,36 @@ async def test_success_event(
             encrypted_random_data.offset,
         )
 
-    async def publisher_patch():
-        return irs_kafka_fixture.publisher
-
     monkeypatch.setattr(
-        "irs.core.upload_handler.call_eks_api",
+        "irs.core.interrogator.call_eks_api",
         eks_patch,
     )
     monkeypatch.setattr(
         "irs.adapters.inbound.s3_download.get_objectstorage",
         lambda: encrypted_random_data.s3_fixture.storage,
     )
-    monkeypatch.setattr(
-        "irs.adapters.outbound.kafka_producer.get_publisher", publisher_patch
-    )
 
     payload_in = incoming_payload(encrypted_random_data)
-    event_in = incoming_irs_event(payload=payload_in)
+    event_in = incoming_irs_event(payload=payload_in, config=irs_kafka_fixture.config)
 
     part_size = calc_part_size(file_size=encrypted_random_data.file_size)
 
     payload_out = {
         "file_id": OBJECT_ID,
-        "secret_id": "secret_id",
-        "offset": encrypted_random_data.offset,
-        "part_size": part_size,
-        "content_checksum_sha256": encrypted_random_data.checksum,
+        "upload_date": encrypted_random_data.upload_date,
+        "decryption_secret_id": "secret_id",
+        "content_offset": encrypted_random_data.offset,
+        "encrypted_part_size": part_size,
+        "decrypted_sha256": encrypted_random_data.checksum,
     }
     expected_event_out = ExpectedEvent(
-        payload=payload_out, type_="upload_validation_success", key="test-object"
+        payload=payload_out,
+        type_=irs_kafka_fixture.config.interrogations_success_type,
+        key="test-object",
     )
 
     async with irs_kafka_fixture.record_events(
-        in_topic="file_interrogation",
+        in_topic=irs_kafka_fixture.config.interrogations_topic,
     ) as event_recorder:
         await irs_kafka_fixture.publish_event(**event_in)
         await irs_kafka_fixture.subscriber.run(forever=False)

@@ -14,38 +14,47 @@
 # limitations under the License.
 """KafkaEventSubscriber receiving events from UCS and validating file uploads"""
 
+from ghga_event_schemas import pydantic_ as event_schemas
+from ghga_event_schemas.validation import get_validated_payload
 from hexkit.custom_types import Ascii, JsonObject
 from hexkit.protocols.eventsub import EventSubscriberProtocol
-from pydantic import BaseModel, Field
+from pydantic import BaseSettings, Field
 
-from irs.core.upload_handler import process_new_upload
-
-
-class FileUploadCompletedEvent(BaseModel):
-    """
-    Details for incoming file_upload_completed event from ucs - remove unused fields
-    until we integrate with UCS
-    """
-
-    file_id: str = Field(..., alias="file-id")
-    public_key: str = Field(..., alias="public-key")
-    sha256_checksum: str = Field(..., alias="sha256-checksum")
-    size: int
-
-    class Config:
-        """Needed config to allow popupalation by non-alias name"""
-
-        allow_population_by_field_name = True
+from irs.ports.inbound.interrogator import InterrogatorPort
 
 
-class UploadTaskReceiver(EventSubscriberProtocol):
-    """
-    EventSubscriber Implementation processing relevant information from UCS
-    file_upload_completed event
-    """
+class EventSubTanslatorConfig(BaseSettings):
+    """Config for publishing file upload-related events."""
 
-    topics_of_interest: list[Ascii] = ["file_upload_received"]
-    types_of_interest: list[Ascii] = ["ucs"]
+    upload_received_event_topic: str = Field(
+        "file_uploads",
+        description=(
+            "Name of the topic to publish events that inform about new file uploads."
+        ),
+    )
+    upload_received_event_type: str = Field(
+        "file_upload_received",
+        description="The type to use for events that inform about new file uploads.",
+    )
+
+
+class EventSubTranslator(EventSubscriberProtocol):
+    """A triple hexagonal translator compatible with the EventSubscriberProtocol that
+    is used to received events relevant for file uploads."""
+
+    def __init__(self, config: EventSubTanslatorConfig, interrogator: InterrogatorPort):
+        """Initialize with config parameters and core dependencies."""
+
+        self.topics_of_interest = [
+            config.upload_received_event_topic,
+        ]
+        self.types_of_interest = [
+            config.upload_received_event_type,
+        ]
+
+        self._interrogator = interrogator
+
+        self._config = config
 
     async def _consume_validated(  # pylint: disable=unused-argument,no-self-use
         self, *, payload: JsonObject, type_: Ascii, topic: Ascii
@@ -58,14 +67,16 @@ class UploadTaskReceiver(EventSubscriberProtocol):
             type_ (str): The type of the event.
             topic (str): Name of the topic the event was published to.
         """
-        object_id = payload["file_id"]
-        object_size = payload["size"]
-        public_key = payload["public_key"]
-        # do we need to handle grouping label for prefixes in inbox?
-        checksum = payload["sha256_checksum"]
-        await process_new_upload(
-            object_id=object_id,
-            object_size=object_size,
-            public_key=public_key,
-            checksum=checksum,
+
+        validated_payload = get_validated_payload(
+            payload=payload,
+            schema=event_schemas.FileUploadReceived,
+        )
+
+        await self._interrogator.interrogate(
+            object_id=validated_payload.file_id,
+            public_key=validated_payload.submitter_public_key,
+            upload_date=validated_payload.upload_date,
+            object_size=validated_payload.decrypted_size,
+            sha256_checksum=validated_payload.expected_decrypted_sha256,
         )
