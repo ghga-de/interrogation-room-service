@@ -22,6 +22,7 @@ from abc import ABC, abstractmethod
 class EventPublisherPort(ABC):
     """An interface for an adapter that publishes events happening to this service."""
 
+    @abstactmethod
     async def publish_validation_success(
         self,
         *,
@@ -38,6 +39,7 @@ class EventPublisherPort(ABC):
         """Publish event informing that a validation was successfull."""
         ...
 
+    @abstractmethod
     async def publish_validation_failure(
         self,
         *,
