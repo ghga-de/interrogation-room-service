@@ -39,25 +39,3 @@ class UploadHandlerPort(ABC):
         """
         ...
 
-    @abstractmethod
-    async def _compute_checksums(  # pylint: disable=too-many-locals
-        self,
-        *,
-        download_url: str,
-        secret: bytes,
-        object_size: int,
-        part_size: int,
-        offset: int,
-    ) -> Tuple[List[str], List[str], str]:
-        """Compute total unencrypted file checksum and encrypted part checksums"""
-        ...
-
-    @abstractmethod
-    def _get_segments(self, *, file_part: bytes) -> Tuple[List[bytes], bytes]:
-        """Chunk file part into decryptable segments"""
-        ...
-
-    @abstractmethod
-    def _get_part_checksums(self, *, file_part: bytes):
-        """Compute md5 and sha256 for encrypted part"""
-        ...
