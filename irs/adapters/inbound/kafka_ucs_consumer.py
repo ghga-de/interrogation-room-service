@@ -20,7 +20,7 @@ from hexkit.custom_types import Ascii, JsonObject
 from hexkit.protocols.eventsub import EventSubscriberProtocol
 from pydantic import BaseSettings, Field
 
-from irs.ports.inbound.upload_handler import UploadHandlerPort
+from irs.ports.inbound.interrogator import InterrogatorPort
 
 
 class EventSubTanslatorConfig(BaseSettings):
@@ -42,9 +42,7 @@ class EventSubTranslator(EventSubscriberProtocol):
     """A triple hexagonal translator compatible with the EventSubscriberProtocol that
     is used to received events relevant for file uploads."""
 
-    def __init__(
-        self, config: EventSubTanslatorConfig, upload_handler: UploadHandlerPort
-    ):
+    def __init__(self, config: EventSubTanslatorConfig, interrogator: InterrogatorPort):
         """Initialize with config parameters and core dependencies."""
 
         self.topics_of_interest = [
@@ -54,7 +52,7 @@ class EventSubTranslator(EventSubscriberProtocol):
             config.upload_received_event_type,
         ]
 
-        self._upload_handler = upload_handler
+        self._interrogator = interrogator
 
         self._config = config
 
@@ -75,7 +73,7 @@ class EventSubTranslator(EventSubscriberProtocol):
             schema=event_schemas.FileUploadReceived,
         )
 
-        await self._upload_handler.interrogate(
+        await self._interrogator.interrogate(
             object_id=validated_payload.file_id,
             public_key=validated_payload.submitter_public_key,
             upload_date=validated_payload.upload_date,

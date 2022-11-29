@@ -15,14 +15,14 @@
 
 """Interfaces for event publishing adapters and the exception they may throw."""
 
-from datetime import datetime
 from abc import ABC, abstractmethod
+from datetime import datetime
 
 
 class EventPublisherPort(ABC):
     """An interface for an adapter that publishes events happening to this service."""
 
-    @abstactmethod
+    @abstractmethod
     async def publish_validation_success(
         self,
         *,

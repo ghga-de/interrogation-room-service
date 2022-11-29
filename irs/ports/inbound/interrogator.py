@@ -17,11 +17,13 @@
 
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import List, Tuple
 
 
 class InterrogatorPort(ABC):
-    """The interface of a service for validating the content of encrypted files and for performing re-encryption."""
+    """
+    The interface of a service for validating the content of encrypted files
+    and for performing re-encryption.
+    """
 
     @abstractmethod
     async def interrogate(  # pylint: disable=too-many-locals
@@ -38,4 +40,3 @@ class InterrogatorPort(ABC):
         secret(s) (K_data), decrypts file and computes checksums
         """
         ...
-

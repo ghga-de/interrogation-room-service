@@ -21,7 +21,7 @@ from hexkit.providers.akafka import KafkaEventPublisher, KafkaEventSubscriber
 
 from irs.adapters.inbound.kafka_ucs_consumer import EventSubTranslator
 from irs.adapters.outbound.kafka_producer import EventPublisher
-from irs.core.upload_handler import UploadHandler
+from irs.core.interrogator import Interrogator
 
 from .config import CONFIG, Config
 
@@ -31,10 +31,10 @@ async def run_subscriber(config: Config = CONFIG):
 
     async with KafkaEventPublisher.construct(config=config) as publish_provider:
         event_publisher = EventPublisher(config=config, provider=publish_provider)
-        upload_handler = UploadHandler(event_publisher=event_publisher)
+        interrogator = Interrogator(event_publisher=event_publisher)
         async with KafkaEventSubscriber.construct(
             config=config,
-            translator=EventSubTranslator(config=config, upload_handler=upload_handler),
+            translator=EventSubTranslator(config=config, interrogator=interrogator),
         ) as subscriber:
             await subscriber.run()
 

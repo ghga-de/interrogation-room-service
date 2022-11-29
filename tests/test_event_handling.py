@@ -74,7 +74,7 @@ async def test_failure_event(
         )
 
     monkeypatch.setattr(
-        "irs.core.upload_handler.call_eks_api",
+        "irs.core.interrogator.call_eks_api",
         eks_patch,
     )
     monkeypatch.setattr(
@@ -133,7 +133,7 @@ async def test_success_event(
         )
 
     monkeypatch.setattr(
-        "irs.core.upload_handler.call_eks_api",
+        "irs.core.interrogator.call_eks_api",
         eks_patch,
     )
     monkeypatch.setattr(
