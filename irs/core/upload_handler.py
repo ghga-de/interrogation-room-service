@@ -34,8 +34,8 @@ from irs.ports.inbound.upload_handler import UploadHandlerPort
 from irs.ports.outbound.event_pub import EventPublisherPort
 
 
-class UploadHandler(UploadHandlerPort):
-    """A service that validates uploaded files"""
+class Interrogator(InterrogatorPort):
+    """A service that validates the content of encrypted files and performs a re-encryption."""
 
     def __init__(
         self,
