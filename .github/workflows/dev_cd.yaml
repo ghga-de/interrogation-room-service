@@ -50,6 +50,12 @@ jobs:
       - uses: docker/setup-qemu-action@v2.0.0
         name: Set up QEMU
 
+      - name: Install cosign
+        if: github.event_name != 'pull_request'
+        uses: sigstore/cosign-installer@main
+        with:
+          cosign-release: v1.8.0
+
       - uses: docker/setup-buildx-action@v2.0.0
         name: Set up Docker Buildx
 
