@@ -3,40 +3,37 @@
   "description": "Modifies the orginal Settings class provided by the user",
   "type": "object",
   "properties": {
-    "interrogations_success_type": {
-      "title": "Interrogations Success Type",
-      "description": "The type used for events informing about the success of a file validation.",
-      "default": "file_interrogation_success",
-      "example": "file_validation_success",
-      "env_names": [
-        "irs_interrogations_success_type"
-      ],
-      "type": "string"
-    },
-    "interrogations_failure_type": {
-      "title": "Interrogations Failure Type",
-      "description": "The type used for events informing about the failure of a file validation.",
-      "default": "file_validation_failure",
-      "example": "file_validation_failure",
-      "env_names": [
-        "irs_interrogations_failure_type"
-      ],
-      "type": "string"
-    },
-    "interrogations_topic": {
-      "title": "Interrogations Topic",
+    "interrogation_topic": {
+      "title": "Interrogation Topic",
       "description": "Name of the topic used for events informing about the outcome of file validations.",
-      "default": "file_interrogation",
       "example": "file_interrogation",
       "env_names": [
-        "irs_interrogations_topic"
+        "irs_interrogation_topic"
+      ],
+      "type": "string"
+    },
+    "interrogation_success_type": {
+      "title": "Interrogation Success Type",
+      "description": "The type used for events informing about the success of a file validation.",
+      "example": "file_validation_success",
+      "env_names": [
+        "irs_interrogation_success_type"
+      ],
+      "type": "string"
+    },
+    "interrogation_failure_type": {
+      "title": "Interrogation Failure Type",
+      "description": "The type used for events informing about the failure of a file validation.",
+      "example": "file_validation_failure",
+      "env_names": [
+        "irs_interrogation_failure_type"
       ],
       "type": "string"
     },
     "upload_received_event_topic": {
       "title": "Upload Received Event Topic",
       "description": "Name of the topic to publish events that inform about new file uploads.",
-      "default": "file_uploads",
+      "example": "file_uploads",
       "env_names": [
         "irs_upload_received_event_topic"
       ],
@@ -45,7 +42,7 @@
     "upload_received_event_type": {
       "title": "Upload Received Event Type",
       "description": "The type to use for events that inform about new file uploads.",
-      "default": "file_upload_received",
+      "example": "file_upload_received",
       "env_names": [
         "irs_upload_received_event_type"
       ],
@@ -148,6 +145,11 @@
     }
   },
   "required": [
+    "interrogation_topic",
+    "interrogation_success_type",
+    "interrogation_failure_type",
+    "upload_received_event_topic",
+    "upload_received_event_type",
     "s3_endpoint_url",
     "s3_access_key_id",
     "s3_secret_access_key",

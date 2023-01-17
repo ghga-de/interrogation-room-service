@@ -27,26 +27,26 @@ from irs.ports.outbound.event_pub import EventPublisherPort
 class EventPubTanslatorConfig(BaseSettings):
     """Config for publishing file upload-related events."""
 
-    interrogations_success_type: str = Field(
-        "file_interrogation_success",
+    interrogation_topic: str = Field(
+        ...,
+        description=(
+            "Name of the topic used for events informing about the outcome of file validations."
+        ),
+        example="file_interrogation",
+    )
+    interrogation_success_type: str = Field(
+        ...,
         description=(
             "The type used for events informing about the success of a file validation."
         ),
         example="file_validation_success",
     )
-    interrogations_failure_type: str = Field(
-        "file_validation_failure",
+    interrogation_failure_type: str = Field(
+        ...,
         description=(
             "The type used for events informing about the failure of a file validation."
         ),
         example="file_validation_failure",
-    )
-    interrogations_topic: str = Field(
-        "file_interrogation",
-        description=(
-            "Name of the topic used for events informing about the outcome of file validations."
-        ),
-        example="file_interrogation",
     )
 
 
@@ -89,8 +89,8 @@ class EventPublisher(EventPublisherPort):
         )
         await self._provider.publish(
             payload=json.loads(event_payload.json()),
-            type_=self._config.interrogations_success_type,
-            topic=self._config.interrogations_topic,
+            type_=self._config.interrogation_success_type,
+            topic=self._config.interrogation_topic,
             key=file_id,
         )
 
@@ -112,7 +112,7 @@ class EventPublisher(EventPublisherPort):
         )
         await self._provider.publish(
             payload=json.loads(event_payload.json()),
-            type_=self._config.interrogations_failure_type,
-            topic=self._config.interrogations_topic,
+            type_=self._config.interrogation_failure_type,
+            topic=self._config.interrogation_topic,
             key=file_id,
         )
