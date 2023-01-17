@@ -78,7 +78,7 @@ async def test_failure_event(
         eks_patch,
     )
     monkeypatch.setattr(
-        "irs.adapters.inbound.s3_download.get_objectstorage",
+        "irs.adapters.inbound.s3.get_objectstorage",
         lambda: encrypted_random_data.s3_fixture.storage,
     )
 
@@ -137,7 +137,7 @@ async def test_success_event(
         eks_patch,
     )
     monkeypatch.setattr(
-        "irs.adapters.inbound.s3_download.get_objectstorage",
+        "irs.adapters.inbound.s3.get_objectstorage",
         lambda: encrypted_random_data.s3_fixture.storage,
     )
 

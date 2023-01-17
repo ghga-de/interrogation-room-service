@@ -19,8 +19,8 @@ from hexkit.providers.akafka import KafkaEventPublisher, KafkaEventSubscriber
 from hexkit.providers.akafka.testutils import KafkaFixture
 from testcontainers.kafka import KafkaContainer
 
-from irs.adapters.inbound.kafka_ucs_consumer import EventSubTranslator
-from irs.adapters.outbound.kafka_producer import EventPublisher
+from irs.adapters.inbound.akafka import EventSubTranslator
+from irs.adapters.outbound.akafka import EventPublisher
 from irs.core.interrogator import Interrogator
 from tests.fixtures.config import DEFAULT_CONFIG, Config
 

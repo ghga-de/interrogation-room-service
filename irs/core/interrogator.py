@@ -24,11 +24,7 @@ from hexkit.utils import calc_part_size
 
 from irs.adapters.http.api_calls import call_eks_api
 from irs.adapters.http.exceptions import KnownError
-from irs.adapters.inbound.s3_download import (
-    get_download_url,
-    retrieve_part,
-    retrieve_parts,
-)
+from irs.adapters.inbound.s3 import get_download_url, retrieve_part, retrieve_parts
 from irs.config import CONFIG
 from irs.ports.inbound.interrogator import InterrogatorPort
 from irs.ports.outbound.event_pub import EventPublisherPort

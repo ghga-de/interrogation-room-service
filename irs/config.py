@@ -20,8 +20,8 @@ from ghga_service_chassis_lib.s3 import S3ConfigBase
 from hexkit.providers.akafka import KafkaConfig
 from pydantic import Field
 
-from irs.adapters.inbound.kafka_ucs_consumer import EventSubTanslatorConfig
-from irs.adapters.outbound.kafka_producer import EventPubTanslatorConfig
+from irs.adapters.inbound.akafka import EventSubTanslatorConfig
+from irs.adapters.outbound.akafka import EventPubTanslatorConfig
 
 
 @config_from_yaml(prefix="irs")
