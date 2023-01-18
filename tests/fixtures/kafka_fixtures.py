@@ -1,4 +1,4 @@
-# Copyright 2021 - 2022 Universität Tübingen, DKFZ and EMBL
+# Copyright 2021 - 2023 Universität Tübingen, DKFZ and EMBL
 # for the German Human Genome-Phenome Archive (GHGA)
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,8 +19,8 @@ from hexkit.providers.akafka import KafkaEventPublisher, KafkaEventSubscriber
 from hexkit.providers.akafka.testutils import KafkaFixture
 from testcontainers.kafka import KafkaContainer
 
-from irs.adapters.inbound.kafka_ucs_consumer import EventSubTranslator
-from irs.adapters.outbound.kafka_producer import EventPublisher
+from irs.adapters.inbound.akafka import EventSubTranslator
+from irs.adapters.outbound.akafka import EventPublisher
 from irs.core.interrogator import Interrogator
 from tests.fixtures.config import DEFAULT_CONFIG, Config
 

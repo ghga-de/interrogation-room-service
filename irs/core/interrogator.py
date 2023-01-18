@@ -1,4 +1,4 @@
-# Copyright 2021 - 2022 Universität Tübingen, DKFZ and EMBL
+# Copyright 2021 - 2023 Universität Tübingen, DKFZ and EMBL
 # for the German Human Genome-Phenome Archive (GHGA)
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,11 +24,7 @@ from hexkit.utils import calc_part_size
 
 from irs.adapters.http.api_calls import call_eks_api
 from irs.adapters.http.exceptions import KnownError
-from irs.adapters.inbound.s3_download import (
-    get_download_url,
-    retrieve_part,
-    retrieve_parts,
-)
+from irs.adapters.inbound.s3 import get_download_url, retrieve_part, retrieve_parts
 from irs.config import CONFIG
 from irs.ports.inbound.interrogator import InterrogatorPort
 from irs.ports.outbound.event_pub import EventPublisherPort
@@ -152,9 +148,7 @@ class Interrogator(InterrogatorPort):
             total_sha256_checksum.hexdigest(),
         )
 
-    def _get_segments(  # pylint: disable=no-self-use
-        self, *, file_part: bytes
-    ) -> Tuple[List[bytes], bytes]:
+    def _get_segments(self, *, file_part: bytes) -> Tuple[List[bytes], bytes]:
         """Chunk file part into decryptable segments"""
 
         num_segments = len(file_part) / CIPHER_SEGMENT_SIZE
@@ -172,7 +166,7 @@ class Interrogator(InterrogatorPort):
             incomplete_segment = file_part[full_segments * CIPHER_SEGMENT_SIZE :]
         return segments, incomplete_segment
 
-    def _get_part_checksums(self, *, file_part: bytes):  # pylint: disable=no-self-use
+    def _get_part_checksums(self, *, file_part: bytes):
         """Compute md5 and sha256 for encrypted part"""
         return (
             hashlib.md5(file_part, usedforsecurity=False).hexdigest(),

@@ -1,4 +1,4 @@
-# Copyright 2021 - 2022 Universität Tübingen, DKFZ and EMBL
+# Copyright 2021 - 2023 Universität Tübingen, DKFZ and EMBL
 # for the German Human Genome-Phenome Archive (GHGA)
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -54,7 +54,7 @@ async def encrypted_random_data(
     s3_fixture: S3Fixture,  # noqa: F811
 ) -> AsyncGenerator[EncryptedDataFixture, None]:
     """Bucket prefilled with crypt4gh-encrypted random data"""
-    sys.set_int_max_str_digits(256 * 1024**2)  # type: ignore
+    sys.set_int_max_str_digits(256 * 1024**2)
     with big_temp_file(FILE_SIZE) as data:
         # rewind data pointer
         data.seek(0)

@@ -1,4 +1,4 @@
-# Copyright 2021 - 2022 Universität Tübingen, DKFZ and EMBL
+# Copyright 2021 - 2023 Universität Tübingen, DKFZ and EMBL
 # for the German Human Genome-Phenome Archive (GHGA)
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,8 +20,8 @@ from ghga_service_chassis_lib.s3 import S3ConfigBase
 from hexkit.providers.akafka import KafkaConfig
 from pydantic import Field
 
-from irs.adapters.inbound.kafka_ucs_consumer import EventSubTanslatorConfig
-from irs.adapters.outbound.kafka_producer import EventPubTanslatorConfig
+from irs.adapters.inbound.akafka import EventSubTanslatorConfig
+from irs.adapters.outbound.akafka import EventPubTanslatorConfig
 
 
 @config_from_yaml(prefix="irs")
