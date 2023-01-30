@@ -12,30 +12,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-"""Interface for validating uploaded files"""
-
-from abc import ABC, abstractmethod
-from datetime import datetime
+"""Custom exceptions for errors encountered during ciphersegment processing"""
 
 
-class InterrogatorPort(ABC):
-    """
-    The interface of a service for validating the content of encrypted files.
-    """
+class SegmentCorruptedError(Exception):
+    """Thrown when any of the full-length ciphersegments could not be decrypted"""
 
-    @abstractmethod
-    async def interrogate(  # pylint: disable=too-many-locals
-        self,
-        *,
-        object_id: str,
-        public_key: str,
-        upload_date: datetime,
-        decrypted_size: int,
-        sha256_checksum: str,
-    ):
-        """
-        Forwards first file part to encryption key store, retrieves file encryption
-        secret(s) (K_data), decrypts file and computes checksums
-        """
-        ...
+    def __init__(self):
+        message = "Failed decrypting ciphersegment in current file part."
+        super().__init__(message)
+
+
+class LastSegmentCorruptedError(Exception):
+    """Thrown when the last, possibly incomplete ciphersegment could not be decrypted"""
+
+    def __init__(self):
+        message = "Failed decrypting the last ciphersegment."
+        super().__init__(message)
