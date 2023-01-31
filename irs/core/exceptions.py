@@ -18,8 +18,8 @@
 class SegmentCorruptedError(Exception):
     """Thrown when any of the full-length ciphersegments could not be decrypted"""
 
-    def __init__(self):
-        message = "Failed decrypting ciphersegment in current file part."
+    def __init__(self, *, part_number: int):
+        message = f"Failed decrypting ciphersegment in current file part {part_number}."
         super().__init__(message)
 
 

@@ -119,12 +119,14 @@ class Interrogator(InterrogatorPort):
         # buffers to account for non part/cipher segment size aligned blocks
         partial_ciphersegment = b""
 
+        part_number = 0
         async for part in retrieve_parts(
             url=download_url,
             object_size=object_size,
             part_size=part_size,
             offset=offset,
         ):
+            part_number += 1
             md5sum, sha256sum = self._get_part_checksums(file_part=part)
             encrypted_md5_part_checksums.append(md5sum)
             encrypted_sha256_part_checksums.append(sha256sum)
@@ -143,7 +145,7 @@ class Interrogator(InterrogatorPort):
                     )
                 # could also depend on PyNaCl directly for the exact exception
                 except Exception as exc:
-                    raise SegmentCorruptedError() from exc
+                    raise SegmentCorruptedError(part_number=part_number) from exc
                 total_sha256_checksum.update(decrypted)
 
         # process remaining data
