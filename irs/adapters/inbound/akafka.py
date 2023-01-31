@@ -77,6 +77,6 @@ class EventSubTranslator(EventSubscriberProtocol):
             object_id=validated_payload.file_id,
             public_key=validated_payload.submitter_public_key,
             upload_date=validated_payload.upload_date,
-            object_size=validated_payload.decrypted_size,
+            decrypted_size=validated_payload.decrypted_size,
             sha256_checksum=validated_payload.expected_decrypted_sha256,
         )
