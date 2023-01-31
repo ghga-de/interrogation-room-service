@@ -55,9 +55,17 @@ class RequestFailedError(KnownError):
         super().__init__(message)
 
 
-class UnprocessedBytesError(KnownError):
-    """Raised when a byte chunk remains after processing all file parts"""
+class SecretInsertionError(KnownError):
+    """Thrown when an internal vault error causes secret storage to fail"""
 
-    def __init__(self, *, chunk_length: int):
-        message = f"{chunk_length} unprocessed bytes encountered at at the file end"
+    def __init__(self):
+        message = "An internal error occurred when trying to store the secret."
+        super().__init__(message)
+
+
+class VaultConnectionError(KnownError):
+    """Thrown when a connection error causes secret storage to fail"""
+
+    def __init__(self):
+        message = "Could not save secret due to connection issues."
         super().__init__(message)

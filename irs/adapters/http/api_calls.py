@@ -42,6 +42,8 @@ def call_eks_api(
                 "malformedOrMissingEnvelopeError": exceptions.MalformedOrMissingEnvelope
             },
             403: {"envelopeDecryptionError": exceptions.EnvelopeDecryptionError},
+            502: {"secretInsertionError": exceptions.SecretInsertionError},
+            504: {"vaultConnectionError": exceptions.VaultConnectionError},
         }
         ResponseExceptionTranslator(spec=spec).handle(response=response)
         raise exceptions.BadResponseCodeError(url=api_url, response_code=status_code)

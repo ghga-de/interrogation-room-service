@@ -60,11 +60,9 @@ async def get_download_url(*, object_id: str) -> str:
 async def get_object_size(*, object_id: str) -> int:
     """Get object size from S3 metadata"""
     storage = get_objectstorage()
-    # this should be made available as part of the hexkit public interface
-    metadata = await storage._get_object_metadata(
+    return await storage.get_object_size(
         bucket_id=CONFIG.inbox_bucket, object_id=object_id
     )
-    return metadata["ContentLength"]
 
 
 def get_objectstorage() -> S3ObjectStorage:
