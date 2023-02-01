@@ -25,7 +25,7 @@ from irs.adapters.http.exception_translation import ResponseExceptionTranslator
 
 def call_eks_api(
     *, file_part: bytes, public_key: str, api_url: str
-) -> Tuple[bytes, str, int]:
+) -> Tuple[bytes, bytes, str, int]:
     """Call EKS to get encryption secret and file content offset from envelope"""
     data = base64.b64encode(file_part).decode("utf-8")
     request_body = {"public_key": public_key, "file_part": data}
@@ -49,8 +49,9 @@ def call_eks_api(
         raise exceptions.BadResponseCodeError(url=api_url, response_code=status_code)
 
     body = response.json()
-    secret = base64.b64decode(body["secret"])
+    submitter_secret = base64.b64decode(body["submitter_secret"])
+    new_secret = base64.b64decode(body["new_secret"])
     secret_id = body["secret_id"]
     offset = body["offset"]
 
-    return secret, secret_id, offset
+    return submitter_secret, new_secret, secret_id, offset

@@ -134,6 +134,15 @@
       ],
       "type": "string"
     },
+    "staging_bucket": {
+      "title": "Staging Bucket",
+      "description": "Bucket ID representing the staging area for re-encrypted files.",
+      "example": "staging",
+      "env_names": [
+        "irs_staging_bucket"
+      ],
+      "type": "string"
+    },
     "eks_url": {
       "title": "Eks Url",
       "description": "URL pointing to the Encryption Key Store service.",
@@ -156,6 +165,7 @@
     "service_instance_id",
     "kafka_servers",
     "inbox_bucket",
+    "staging_bucket",
     "eks_url"
   ],
   "additionalProperties": false
