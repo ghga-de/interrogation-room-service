@@ -176,5 +176,3 @@ async def test_success_event(
 
     for key in payload_out.keys():
         assert event.payload[key] == expected_event_out.payload[key]
-
-    encrypted_random_data.s3_fixture
