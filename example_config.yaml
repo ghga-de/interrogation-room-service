@@ -1,6 +1,6 @@
 aws_config_ini: null
 eks_url: http://127.0.0.1/eks
-inbox_bucket: test-bucket
+inbox_bucket: test-inbox
 interrogation_failure_type: file_validation_failure
 interrogation_success_type: file_validation_success
 interrogation_topic: file_interrogation
@@ -12,5 +12,6 @@ s3_secret_access_key: test
 s3_session_token: null
 service_instance_id: interrogation_room-001
 service_name: interrogation_room
+staging_bucket: test-staging
 upload_received_event_topic: file_uploads
 upload_received_event_type: file_upload_received

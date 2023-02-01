@@ -14,6 +14,7 @@
 # limitations under the License.
 
 import base64
+import os
 from typing import Any, Collection, Mapping, Tuple
 
 import pytest
@@ -24,11 +25,11 @@ from hexkit.utils import calc_part_size
 from tests.fixtures.config import Config
 from tests.fixtures.file_fixtures import encrypted_random_data  # noqa: F401
 from tests.fixtures.file_fixtures import OBJECT_ID, EncryptedDataFixture
-from tests.fixtures.kafka_fixtures import (  # noqa: F401
-    IRSKafkaFixture,
-    irs_kafka_fixture,
-)
+from tests.fixtures.kafka_fixtures import IRSKafkaFixture  # noqa: F401
+from tests.fixtures.kafka_fixtures import irs_kafka_fixture  # noqa: F401
 from tests.fixtures.keypair_fixtures import generate_keypair_fixture  # noqa: F401
+
+EKSS_NEW_SECRET = os.urandom(32)
 
 
 def incoming_irs_event(
@@ -62,13 +63,14 @@ async def test_failure_event(
     """
     Test the whole pipeline from receiving an event to notifying about failure
     """
-    # explicit patchingng required for now
+    # explicit patching required for now
     def eks_patch(
         *, file_part: bytes, public_key: bytes, api_url: str
-    ) -> Tuple[bytes, str, int]:
+    ) -> Tuple[bytes, bytes, str, int]:
         """Monkeypatch to emulate API Call"""
         return (
             encrypted_random_data.file_secret,
+            EKSS_NEW_SECRET,
             "secret_id",
             encrypted_random_data.offset,
         )
@@ -124,10 +126,11 @@ async def test_success_event(
     # explicit patching required for now
     def eks_patch(
         *, file_part: bytes, public_key: bytes, api_url: str
-    ) -> Tuple[bytes, str, int]:
+    ) -> Tuple[bytes, bytes, str, int]:
         """Monkeypatch to emulate API Call"""
         return (
             encrypted_random_data.file_secret,
+            EKSS_NEW_SECRET,
             "secret_id",
             encrypted_random_data.offset,
         )

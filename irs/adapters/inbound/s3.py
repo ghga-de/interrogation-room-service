@@ -95,3 +95,43 @@ async def retrieve_part(*, url: str, start: int, stop: int) -> bytes:
         raise exceptions.RequestFailedError(url=url) from request_error
 
     return response.content
+
+
+async def init_staging(*, object_id: str) -> str:
+    """Start staging a re-encrypted file to staging area, returns an upload id"""
+    storage = get_objectstorage()
+    return await storage.init_multipart_upload(
+        bucket_id=CONFIG.staging_bucket, object_id=object_id
+    )
+
+
+async def stage_part(
+    *, upload_id: str, object_id: str, data: bytes, part_number: int
+) -> None:
+    """Save a file part to the staging area"""
+    storage = get_objectstorage()
+    url = await storage.get_part_upload_url(
+        upload_id=upload_id,
+        bucket_id=CONFIG.staging_bucket,
+        object_id=object_id,
+        part_number=part_number,
+    )
+
+    try:
+        requests.put(url=url, data=data, timeout=60)
+    except requests.exceptions.RequestException as request_error:
+        raise exceptions.RequestFailedError(url=url) from request_error
+
+
+async def complete_staging(
+    *, upload_id: str, object_id: str, part_size: int, parts: int
+) -> None:
+    """Complete the staging of a re-encrypted file"""
+    storage = get_objectstorage()
+    await storage.complete_multipart_upload(
+        upload_id=upload_id,
+        bucket_id=CONFIG.staging_bucket,
+        object_id=object_id,
+        anticipated_part_quantity=parts,
+        anticipated_part_size=part_size,
+    )

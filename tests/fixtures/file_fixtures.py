@@ -30,7 +30,8 @@ from hexkit.providers.s3.testutils import FileObject, S3Fixture
 
 from .keypair_fixtures import KeypairFixture, generate_keypair_fixture  # noqa: F401
 
-BUCKET_ID = "test-bucket"
+INBOX_BUCKET_ID = "test-inbox"
+STAGING_BUCKET_ID = "test-staging"
 OBJECT_ID = "test-object"
 FILE_SIZE = 50 * 1024**2
 
@@ -53,8 +54,11 @@ async def encrypted_random_data(
     generate_keypair_fixture: KeypairFixture,  # noqa: F811
     s3_fixture: S3Fixture,  # noqa: F811
 ) -> AsyncGenerator[EncryptedDataFixture, None]:
-    """Bucket prefilled with crypt4gh-encrypted random data"""
+    """Bucket prefilled with crypt4gh-encrypted random data, empty bucket"""
     sys.set_int_max_str_digits(256 * 1024**2)
+    buckets = [INBOX_BUCKET_ID, STAGING_BUCKET_ID]
+    await s3_fixture.populate_buckets(buckets)
+
     with big_temp_file(FILE_SIZE) as data:
         # rewind data pointer
         data.seek(0)
@@ -81,7 +85,9 @@ async def encrypted_random_data(
             # Rewind file
             encrypted_file.seek(0)
             obj = FileObject(
-                file_path=encrypted_file.name, bucket_id=BUCKET_ID, object_id=OBJECT_ID
+                file_path=encrypted_file.name,
+                bucket_id=INBOX_BUCKET_ID,
+                object_id=OBJECT_ID,
             )
             file_size = len(obj.content)
             await s3_fixture.populate_file_objects([obj])

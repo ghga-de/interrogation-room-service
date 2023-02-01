@@ -34,6 +34,11 @@ class Config(
     inbox_bucket: str = Field(
         ..., example="inbox", description=("Bucket ID representing the inbox.")
     )
+    staging_bucket: str = Field(
+        ...,
+        example="staging",
+        description=("Bucket ID representing the staging area for re-encrypted files."),
+    )
     eks_url: str = Field(
         ...,
         example="http://127.0.0.1/eks",
