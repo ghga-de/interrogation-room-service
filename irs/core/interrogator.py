@@ -121,68 +121,27 @@ class Interrogator(InterrogatorPort):
         offset: int,
     ) -> Tuple[List[str], List[str], str]:
         """Compute total unencrypted file checksum and encrypted part checksums"""
-        total_sha256_checksum = hashlib.sha256()
-        encrypted_md5_part_checksums = []
-        encrypted_sha256_part_checksums = []
-
-        # buffers to account for non part/cipher segment size aligned blocks
-        partial_ciphersegment = b""
-        reencrypted_buffer = b""
-
-        # counter for uploading reencrypted file to staging area
-        reencrypted_part_number = 0
-
         # start multipart upload for staging multipart upload
         upload_id = await init_staging(object_id=object_id)
 
-        part_number = 0
-        async for part in retrieve_parts(
-            url=download_url,
+        # process complete ciphersegments
+        (
+            total_sha256_checksum,
+            encrypted_md5_part_checksums,
+            encrypted_sha256_part_checksums,
+            reencrypted_part_number,
+            incomplete_ciphersegment,
+            reencryption_buffer,
+        ) = await self._handle_parts(
+            upload_id=upload_id,
+            download_url=download_url,
+            secret=secret,
+            new_secret=new_secret,
             object_size=object_size,
+            object_id=object_id,
             part_size=part_size,
             offset=offset,
-        ):
-            part_number += 1
-
-            if partial_ciphersegment:
-                part = partial_ciphersegment + part
-            ciphersegments, incomplete_ciphersegment = self._get_segments(
-                file_part=part
-            )
-            partial_ciphersegment = incomplete_ciphersegment
-
-            for ciphersegment in ciphersegments:
-                try:
-                    decrypted = decrypt_block(
-                        ciphersegment=ciphersegment, session_keys=[secret]
-                    )
-                # could also depend on PyNaCl directly for the exact exception
-                except Exception as exc:
-                    raise SegmentCorruptedError(part_number=part_number) from exc
-                total_sha256_checksum.update(decrypted)
-
-                # reencrypt using the new secret
-                encrypted = self._encrypt_segment(data=decrypted, key=new_secret)
-                reencrypted_buffer += encrypted
-
-            if len(reencrypted_buffer) >= part_size:
-                part = reencrypted_buffer[:part_size]
-
-                # calculate re-encrypted checksums
-                md5sum, sha256sum = self._get_part_checksums(file_part=part)
-                encrypted_md5_part_checksums.append(md5sum)
-                encrypted_sha256_part_checksums.append(sha256sum)
-
-                reencrypted_part_number += 1
-                await stage_part(
-                    upload_id=upload_id,
-                    object_id=object_id,
-                    data=part,
-                    part_number=reencrypted_part_number,
-                )
-
-                rest_len = len(reencrypted_buffer) - part_size
-                reencrypted_buffer = reencrypted_buffer[-rest_len:]
+        )
 
         # process remaining data
         if incomplete_ciphersegment:
@@ -197,10 +156,10 @@ class Interrogator(InterrogatorPort):
 
             # encrypt the last segment
             encrypted = self._encrypt_segment(data=decrypted, key=new_secret)
-            reencrypted_buffer += encrypted
+            reencryption_buffer += encrypted
 
-        if len(reencrypted_buffer) > part_size:
-            part = reencrypted_buffer[:part_size]
+        if len(reencryption_buffer) > part_size:
+            part = reencryption_buffer[:part_size]
 
             # calculate re-encrypted checksums
             md5sum, sha256sum = self._get_part_checksums(file_part=part)
@@ -215,11 +174,11 @@ class Interrogator(InterrogatorPort):
                 part_number=reencrypted_part_number,
             )
 
-            rest_len = len(reencrypted_buffer) - part_size
-            reencrypted_buffer = reencrypted_buffer[-rest_len:]
+            rest_len = len(reencryption_buffer) - part_size
+            reencryption_buffer = reencryption_buffer[-rest_len:]
 
         # re-encrypt the last (incomplete) part
-        part = reencrypted_buffer
+        part = reencryption_buffer
 
         # calculate re-encrypted checksums
         md5sum, sha256sum = self._get_part_checksums(file_part=part)
@@ -246,6 +205,88 @@ class Interrogator(InterrogatorPort):
             encrypted_md5_part_checksums,
             encrypted_sha256_part_checksums,
             total_sha256_checksum.hexdigest(),
+        )
+
+    async def _handle_parts(  # pylint: disable=too-many-locals,
+        self,
+        *,
+        upload_id: str,
+        download_url: str,
+        secret: bytes,
+        new_secret: bytes,
+        object_size: int,
+        object_id: str,
+        part_size: int,
+        offset: int,
+    ):
+        """Handle all parts, procesing complete ciphersegments"""
+        # hashsum buffers
+        total_sha256_checksum = hashlib.sha256()
+        encrypted_md5_part_checksums = []
+        encrypted_sha256_part_checksums = []
+
+        # counter for uploading reencrypted file to staging area
+        reencrypted_part_number = 0
+
+        # buffers to accumulate ciphersegments up to part size
+        partial_ciphersegment = b""
+        reencryption_buffer = b""
+
+        part_number = 0
+        async for part in retrieve_parts(
+            url=download_url,
+            object_size=object_size,
+            part_size=part_size,
+            offset=offset,
+        ):
+            part_number += 1
+
+            if partial_ciphersegment:
+                part = partial_ciphersegment + part
+            ciphersegments, incomplete_ciphersegment = self._get_segments(
+                file_part=part
+            )
+            partial_ciphersegment = incomplete_ciphersegment
+
+            for ciphersegment in ciphersegments:
+                try:
+                    decrypted = decrypt_block(
+                        ciphersegment=ciphersegment, session_keys=[secret]
+                    )
+                except Exception as exc:
+                    raise SegmentCorruptedError(part_number=part_number) from exc
+                total_sha256_checksum.update(decrypted)
+
+                # reencrypt using the new secret
+                encrypted = self._encrypt_segment(data=decrypted, key=new_secret)
+                reencryption_buffer += encrypted
+
+            if len(reencryption_buffer) >= part_size:
+                part = reencryption_buffer[:part_size]
+
+                # calculate re-encrypted checksums
+                md5sum, sha256sum = self._get_part_checksums(file_part=part)
+                encrypted_md5_part_checksums.append(md5sum)
+                encrypted_sha256_part_checksums.append(sha256sum)
+
+                reencrypted_part_number += 1
+                await stage_part(
+                    upload_id=upload_id,
+                    object_id=object_id,
+                    data=part,
+                    part_number=reencrypted_part_number,
+                )
+
+                rest_len = len(reencryption_buffer) - part_size
+                reencryption_buffer = reencryption_buffer[-rest_len:]
+
+        return (
+            total_sha256_checksum,
+            encrypted_md5_part_checksums,
+            encrypted_sha256_part_checksums,
+            reencrypted_part_number,
+            incomplete_ciphersegment,
+            reencryption_buffer,
         )
 
     def _get_segments(self, *, file_part: bytes) -> Tuple[List[bytes], bytes]:
