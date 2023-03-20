@@ -63,6 +63,7 @@ async def test_failure_event(
     """
     Test the whole pipeline from receiving an event to notifying about failure
     """
+
     # explicit patching required for now
     def eks_patch(
         *, file_part: bytes, public_key: bytes, api_url: str
@@ -123,6 +124,7 @@ async def test_success_event(
     """
     Test the whole pipeline from receiving an event to notifying about success
     """
+
     # explicit patching required for now
     def eks_patch(
         *, file_part: bytes, public_key: bytes, api_url: str
