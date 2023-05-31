@@ -14,10 +14,9 @@
 # limitations under the License.
 
 """Config Parameter Modeling and Parsing"""
-
-from ghga_service_chassis_lib.config import config_from_yaml
-from ghga_service_chassis_lib.s3 import S3ConfigBase
+from hexkit.config import config_from_yaml
 from hexkit.providers.akafka import KafkaConfig
+from hexkit.providers.s3 import S3Config
 from pydantic import Field
 
 from irs.adapters.inbound.akafka import EventSubTanslatorConfig
@@ -25,9 +24,7 @@ from irs.adapters.outbound.akafka import EventPubTanslatorConfig
 
 
 @config_from_yaml(prefix="irs")
-class Config(
-    KafkaConfig, S3ConfigBase, EventSubTanslatorConfig, EventPubTanslatorConfig
-):
+class Config(KafkaConfig, S3Config, EventSubTanslatorConfig, EventPubTanslatorConfig):
     """Config parameters and their defaults."""
 
     service_name: str = "interrogation_room"
