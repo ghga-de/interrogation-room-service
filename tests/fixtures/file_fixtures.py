@@ -24,7 +24,7 @@ from typing import AsyncGenerator
 import crypt4gh.header
 import crypt4gh.lib
 import pytest_asyncio
-from ghga_service_chassis_lib.utils import big_temp_file
+from ghga_service_commons.utils.temp_files import big_temp_file
 from hexkit.providers.s3.testutils import s3_fixture  # noqa: F401
 from hexkit.providers.s3.testutils import FileObject, S3Fixture
 
