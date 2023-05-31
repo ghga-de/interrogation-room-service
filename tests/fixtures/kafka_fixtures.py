@@ -47,8 +47,7 @@ async def irs_kafka_fixture():
     """Configure Kafka subscriber/publisher"""
     with KafkaContainer() as kafka_container:
         kafka_servers = [kafka_container.get_bootstrap_server()]
-        config = DEFAULT_CONFIG
-        config.kafka_servers = kafka_servers
+        config = DEFAULT_CONFIG.copy(update={"kafka_servers": kafka_servers})
 
         async with KafkaEventPublisher.construct(config=config) as publish_provider:
             publisher = EventPublisher(config=config, provider=publish_provider)
