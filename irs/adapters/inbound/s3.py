@@ -49,20 +49,18 @@ def calc_part_ranges(
     return part_ranges
 
 
-async def get_download_url(*, object_id: str) -> str:
+async def get_download_url(*, object_id: str, bucket_id: str) -> str:
     """Get object download URL from S3 inbox bucket"""
     storage = get_objectstorage()
     return await storage.get_object_download_url(
-        bucket_id=CONFIG.inbox_bucket, object_id=object_id
+        bucket_id=bucket_id, object_id=object_id
     )
 
 
-async def get_object_size(*, object_id: str) -> int:
+async def get_object_size(*, object_id: str, bucket_id: str) -> int:
     """Get object size from S3 metadata"""
     storage = get_objectstorage()
-    return await storage.get_object_size(
-        bucket_id=CONFIG.inbox_bucket, object_id=object_id
-    )
+    return await storage.get_object_size(bucket_id=bucket_id, object_id=object_id)
 
 
 def get_objectstorage() -> S3ObjectStorage:

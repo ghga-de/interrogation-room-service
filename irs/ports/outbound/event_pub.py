@@ -27,6 +27,8 @@ class EventPublisherPort(ABC):
         self,
         *,
         file_id: str,
+        object_id: str,
+        bucket_id: str,
         upload_date: datetime,
         secret_id: str,
         offset: int,
@@ -44,6 +46,8 @@ class EventPublisherPort(ABC):
         self,
         *,
         file_id: str,
+        object_id: str,
+        bucket_id: str,
         upload_date: datetime,
         cause: str = "Checksum mismatch",
     ) -> None:

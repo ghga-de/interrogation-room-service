@@ -65,6 +65,8 @@ class EventPublisher(EventPublisherPort):
         self,
         *,
         file_id: str,
+        object_id: str,
+        bucket_id: str,
         upload_date: datetime,
         secret_id: str,
         offset: int,
@@ -78,6 +80,8 @@ class EventPublisher(EventPublisherPort):
 
         event_payload = event_schemas.FileUploadValidationSuccess(
             file_id=file_id,
+            object_id=object_id,
+            bucket_id=bucket_id,
             upload_date=upload_date,
             decrypted_size=decrypted_size,
             decryption_secret_id=secret_id,
@@ -98,6 +102,8 @@ class EventPublisher(EventPublisherPort):
         self,
         *,
         file_id: str,
+        object_id: str,
+        bucket_id: str,
         upload_date: datetime,
         cause: str = "Checksum mismatch",
     ):
@@ -107,6 +113,8 @@ class EventPublisher(EventPublisherPort):
         """
         event_payload = event_schemas.FileUploadValidationFailure(
             file_id=file_id,
+            object_id=object_id,
+            bucket_id=bucket_id,
             upload_date=upload_date,
             reason=cause,
         )

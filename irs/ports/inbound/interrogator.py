@@ -28,7 +28,9 @@ class InterrogatorPort(ABC):
     async def interrogate(  # pylint: disable=too-many-locals
         self,
         *,
+        file_id: str,
         object_id: str,
+        bucket_id: str,
         public_key: str,
         upload_date: datetime,
         decrypted_size: int,

@@ -239,7 +239,9 @@ class Interrogator(InterrogatorPort):
     async def interrogate(  # pylint: disable=too-many-locals
         self,
         *,
+        file_id: str,
         object_id: str,
+        bucket_id: str,
         public_key: str,
         upload_date: datetime,
         decrypted_size: int,
@@ -249,10 +251,12 @@ class Interrogator(InterrogatorPort):
         Forwards first file part to encryption key store, retrieves file encryption
         secret(s) (K_data), decrypts file and computes checksums
         """
-        object_size = await get_object_size(object_id=object_id)
+        object_size = await get_object_size(object_id=object_id, bucket_id=bucket_id)
         part_size = calc_part_size(file_size=object_size)
         try:
-            download_url = await get_download_url(object_id=object_id)
+            download_url = await get_download_url(
+                object_id=object_id, bucket_id=bucket_id
+            )
             part = await retrieve_part(url=download_url, start=0, stop=part_size - 1)
             submitter_secret, new_secret, secret_id, offset = call_eks_api(
                 file_part=part, public_key=public_key, api_url=CONFIG.eks_url
@@ -273,13 +277,19 @@ class Interrogator(InterrogatorPort):
             ) = await cipher_segment_processor.process()
         except (CryptoError, KnownError, ValueError) as exc:
             await self._event_publisher.publish_validation_failure(
-                file_id=object_id, upload_date=upload_date, cause=str(exc)
+                file_id=file_id,
+                object_id=object_id,
+                bucket_id=bucket_id,
+                upload_date=upload_date,
+                cause=str(exc),
             )
             return
 
         if sha256_checksum == content_checksum_sha256:
             await self._event_publisher.publish_validation_success(
-                file_id=object_id,
+                file_id=file_id,
+                object_id=object_id,
+                bucket_id=CONFIG.staging_bucket,
                 secret_id=secret_id,
                 offset=offset,
                 upload_date=upload_date,
@@ -291,5 +301,8 @@ class Interrogator(InterrogatorPort):
             )
         else:
             await self._event_publisher.publish_validation_failure(
-                file_id=object_id, upload_date=upload_date
+                file_id=file_id,
+                object_id=object_id,
+                bucket_id=bucket_id,
+                upload_date=upload_date,
             )
