@@ -19,8 +19,8 @@ import asyncio
 
 from hexkit.providers.akafka import KafkaEventPublisher, KafkaEventSubscriber
 
-from irs.adapters.inbound.akafka import EventSubTranslator
-from irs.adapters.outbound.akafka import EventPublisher
+from irs.adapters.inbound.event_sub import EventSubTranslator
+from irs.adapters.outbound.event_pub import EventPublisher
 from irs.core.interrogator import Interrogator
 
 from .config import CONFIG, Config

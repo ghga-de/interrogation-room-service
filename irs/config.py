@@ -19,8 +19,8 @@ from hexkit.providers.akafka import KafkaConfig
 from hexkit.providers.s3 import S3Config
 from pydantic import Field
 
-from irs.adapters.inbound.akafka import EventSubTanslatorConfig
-from irs.adapters.outbound.akafka import EventPubTanslatorConfig
+from irs.adapters.inbound.event_sub import EventSubTanslatorConfig
+from irs.adapters.outbound.event_pub import EventPubTanslatorConfig
 
 
 @config_from_yaml(prefix="irs")
