@@ -1,6 +1,5 @@
 aws_config_ini: null
 eks_url: http://127.0.0.1/eks
-inbox_bucket: test-inbox
 interrogation_failure_type: file_validation_failure
 interrogation_success_type: file_validation_success
 interrogation_topic: file_interrogation

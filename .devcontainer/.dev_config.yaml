@@ -1,6 +1,5 @@
 # Please only mention the non-default settings here:
 
-inbox_bucket: test-inbox
 staging_bucket: test-staging
 eks_url: http://127.0.0.1/eks
 kafka_servers:

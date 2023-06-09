@@ -129,15 +129,6 @@
         "type": "string"
       }
     },
-    "inbox_bucket": {
-      "title": "Inbox Bucket",
-      "description": "Bucket ID representing the inbox.",
-      "example": "inbox",
-      "env_names": [
-        "irs_inbox_bucket"
-      ],
-      "type": "string"
-    },
     "staging_bucket": {
       "title": "Staging Bucket",
       "description": "Bucket ID representing the staging area for re-encrypted files.",
@@ -168,7 +159,6 @@
     "s3_secret_access_key",
     "service_instance_id",
     "kafka_servers",
-    "inbox_bucket",
     "staging_bucket",
     "eks_url"
   ],

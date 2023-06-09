@@ -1,4 +1,3 @@
-inbox_bucket: test-inbox
 staging_bucket: test-staging
 s3_endpoint_url: http://localhost:4566
 s3_secret_access_key: test

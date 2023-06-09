@@ -28,9 +28,6 @@ class Config(KafkaConfig, S3Config, EventSubTanslatorConfig, EventPubTanslatorCo
     """Config parameters and their defaults."""
 
     service_name: str = "interrogation_room"
-    inbox_bucket: str = Field(
-        ..., example="inbox", description=("Bucket ID representing the inbox.")
-    )
     staging_bucket: str = Field(
         ...,
         example="staging",
