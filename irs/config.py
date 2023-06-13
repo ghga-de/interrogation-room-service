@@ -40,4 +40,4 @@ class Config(KafkaConfig, S3Config, EventSubTanslatorConfig, EventPubTanslatorCo
     )
 
 
-CONFIG = Config()
+CONFIG = Config()  # type: ignore
