@@ -77,8 +77,6 @@ The service requires the following configuration parameters:
 
   - **Items** *(string)*
 
-- **`inbox_bucket`** *(string)*: Bucket ID representing the inbox.
-
 - **`staging_bucket`** *(string)*: Bucket ID representing the staging area for re-encrypted files.
 
 - **`eks_url`** *(string)*: URL pointing to the Encryption Key Store service.
