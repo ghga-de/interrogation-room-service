@@ -17,6 +17,7 @@
 import hashlib
 import math
 import os
+import uuid
 from datetime import datetime
 from typing import List, Tuple
 
@@ -240,8 +241,8 @@ class Interrogator(InterrogatorPort):
         self,
         *,
         file_id: str,
-        object_id: str,
-        bucket_id: str,
+        source_object_id: str,
+        source_bucket_id: str,
         public_key: str,
         upload_date: datetime,
         decrypted_size: int,
@@ -249,18 +250,26 @@ class Interrogator(InterrogatorPort):
     ):
         """
         Forwards first file part to encryption key store, retrieves file encryption
-        secret(s) (K_data), decrypts file and computes checksums
+        secret(s) (K_data), decrypts file and computes checksums. The object and bucket
+        ID parameters refer to the object_id and bucket_id associated with the upload,
+        i.e. not the staging bucket.
         """
-        object_size = await get_object_size(object_id=object_id, bucket_id=bucket_id)
+        object_size = await get_object_size(
+            object_id=source_object_id, bucket_id=source_bucket_id
+        )
         part_size = calc_part_size(file_size=object_size)
         try:
             download_url = await get_download_url(
-                object_id=object_id, bucket_id=bucket_id
+                object_id=source_object_id, bucket_id=source_bucket_id
             )
             part = await retrieve_part(url=download_url, start=0, stop=part_size - 1)
             submitter_secret, new_secret, secret_id, offset = call_eks_api(
                 file_part=part, public_key=public_key, api_url=CONFIG.eks_url
             )
+
+            # generate ID for the staging bucket file
+            object_id = str(uuid.uuid4())
+
             cipher_segment_processor = CipherSegmentProcessor(
                 download_url=download_url,
                 secret=submitter_secret,
@@ -279,7 +288,7 @@ class Interrogator(InterrogatorPort):
             await self._event_publisher.publish_validation_failure(
                 file_id=file_id,
                 object_id=object_id,
-                bucket_id=bucket_id,
+                bucket_id=CONFIG.staging_bucket,
                 upload_date=upload_date,
                 cause=str(exc),
             )
@@ -303,6 +312,6 @@ class Interrogator(InterrogatorPort):
             await self._event_publisher.publish_validation_failure(
                 file_id=file_id,
                 object_id=object_id,
-                bucket_id=bucket_id,
+                bucket_id=CONFIG.staging_bucket,
                 upload_date=upload_date,
             )

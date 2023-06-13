@@ -75,8 +75,8 @@ class EventSubTranslator(EventSubscriberProtocol):
 
         await self._interrogator.interrogate(
             file_id=validated_payload.file_id,
-            object_id=validated_payload.object_id,
-            bucket_id=validated_payload.bucket_id,
+            source_object_id=validated_payload.object_id,
+            source_bucket_id=validated_payload.bucket_id,
             public_key=validated_payload.submitter_public_key,
             upload_date=validated_payload.upload_date,
             decrypted_size=validated_payload.decrypted_size,
