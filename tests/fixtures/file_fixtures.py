@@ -32,6 +32,7 @@ from .keypair_fixtures import KeypairFixture, generate_keypair_fixture  # noqa: 
 
 INBOX_BUCKET_ID = "test-inbox"
 STAGING_BUCKET_ID = "test-staging"
+FILE_ID = "test-file-id"
 OBJECT_ID = "test-object"
 FILE_SIZE = 50 * 1024**2
 
