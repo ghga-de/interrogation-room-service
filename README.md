@@ -19,13 +19,13 @@ We recommend using the provided Docker container.
 
 A pre-build version is available at [docker hub](https://hub.docker.com/repository/docker/ghga/interrogation-room-service):
 ```bash
-docker pull ghga/interrogation-room-service:0.2.2
+docker pull ghga/interrogation-room-service:0.3.0
 ```
 
 Or you can build the container yourself from the [`./Dockerfile`](./Dockerfile):
 ```bash
 # Execute in the repo's root dir:
-docker build -t ghga/interrogation-room-service:0.2.2 .
+docker build -t ghga/interrogation-room-service:0.3.0 .
 ```
 
 For production-ready deployment, we recommend using Kubernetes, however,
@@ -33,7 +33,7 @@ for simple use cases, you could execute the service using docker
 on a single server:
 ```bash
 # The entrypoint is preconfigured:
-docker run -p 8080:8080 ghga/interrogation-room-service:0.2.2 --help
+docker run -p 8080:8080 ghga/interrogation-room-service:0.3.0 --help
 ```
 
 If you prefer not to use containers, you may install the service from source:
@@ -76,8 +76,6 @@ The service requires the following configuration parameters:
 - **`kafka_servers`** *(array)*: A list of connection strings to connect to Kafka bootstrap servers.
 
   - **Items** *(string)*
-
-- **`inbox_bucket`** *(string)*: Bucket ID representing the inbox.
 
 - **`staging_bucket`** *(string)*: Bucket ID representing the staging area for re-encrypted files.
 

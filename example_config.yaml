@@ -1,11 +1,10 @@
 aws_config_ini: null
 eks_url: http://127.0.0.1/eks
-inbox_bucket: test-inbox
 interrogation_failure_type: file_validation_failure
 interrogation_success_type: file_validation_success
 interrogation_topic: file_interrogation
 kafka_servers:
-- localhost:9092
+- kafka:9092
 s3_access_key_id: test
 s3_endpoint_url: http://localstack:4566
 s3_secret_access_key: '**********'

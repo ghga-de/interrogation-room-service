@@ -19,8 +19,8 @@ from hexkit.providers.akafka import KafkaConfig
 from hexkit.providers.s3 import S3Config
 from pydantic import Field
 
-from irs.adapters.inbound.akafka import EventSubTanslatorConfig
-from irs.adapters.outbound.akafka import EventPubTanslatorConfig
+from irs.adapters.inbound.event_sub import EventSubTanslatorConfig
+from irs.adapters.outbound.event_pub import EventPubTanslatorConfig
 
 
 @config_from_yaml(prefix="irs")
@@ -28,9 +28,6 @@ class Config(KafkaConfig, S3Config, EventSubTanslatorConfig, EventPubTanslatorCo
     """Config parameters and their defaults."""
 
     service_name: str = "interrogation_room"
-    inbox_bucket: str = Field(
-        ..., example="inbox", description=("Bucket ID representing the inbox.")
-    )
     staging_bucket: str = Field(
         ...,
         example="staging",
