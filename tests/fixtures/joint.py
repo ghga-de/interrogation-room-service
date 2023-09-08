@@ -22,7 +22,6 @@ from typing import AsyncGenerator
 
 import pytest_asyncio
 from hexkit.providers.akafka.testutils import KafkaFixture, kafka_fixture  # noqa: F401
-from pytest_asyncio.plugin import _ScopeName
 
 from irs.config import Config
 from irs.container import Container
@@ -39,26 +38,19 @@ class JointFixture:
     kafka: KafkaFixture
 
 
-async def joint_fixture_function(
+@pytest_asyncio.fixture()
+async def joint_fixture(
     kafka_fixture: KafkaFixture,  # noqa: F811
 ) -> AsyncGenerator[JointFixture, None]:
-    """A fixture that embeds all other fixtures for integration testing
-
-    **Do not call directly** Instead, use get_joint_fixture().
-    """
+    """A fixture that embeds all other fixtures for integration testing"""
 
     # merge configs from different sources with the default one:
     config = get_config(sources=[kafka_fixture.config])
 
     # create a DI container instance
-    with get_configured_container(config=config) as container:
+    async with get_configured_container(config=config) as container:
         yield JointFixture(
             config=config,
             container=container,
             kafka=kafka_fixture,
         )
-
-
-def get_joint_fixture(scope: _ScopeName = "function"):
-    """Produce a joint fixture with desired scope"""
-    return pytest_asyncio.fixture(joint_fixture_function, scope=scope)
