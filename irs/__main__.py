@@ -17,26 +17,7 @@
 
 import asyncio
 
-from hexkit.providers.akafka import KafkaEventPublisher, KafkaEventSubscriber
-
-from irs.adapters.inbound.event_sub import EventSubTranslator
-from irs.adapters.outbound.event_pub import EventPublisher
-from irs.config import CONFIG, Config
-from irs.core.interrogator import Interrogator
 from irs.main import consume_events
-
-
-async def run_subscriber(config: Config = CONFIG):
-    """Start the EventSubscriber part of the service"""
-
-    async with KafkaEventPublisher.construct(config=config) as publish_provider:
-        event_publisher = EventPublisher(config=config, provider=publish_provider)
-        interrogator = Interrogator(event_publisher=event_publisher)
-        async with KafkaEventSubscriber.construct(
-            config=config,
-            translator=EventSubTranslator(config=config, interrogator=interrogator),
-        ) as subscriber:
-            await subscriber.run()
 
 
 def run():
