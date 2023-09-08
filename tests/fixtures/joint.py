@@ -14,8 +14,7 @@
 # limitations under the License.
 #
 
-"""Provides multiple fixtures in one spot, with a mongodb fixture that comes pre-populated"""
-# pylint: disable=unused-import, redefined-outer-name
+"""Provides multiple fixtures in one spot"""
 
 from dataclasses import dataclass
 from typing import AsyncGenerator
