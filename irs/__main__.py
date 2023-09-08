@@ -21,9 +21,9 @@ from hexkit.providers.akafka import KafkaEventPublisher, KafkaEventSubscriber
 
 from irs.adapters.inbound.event_sub import EventSubTranslator
 from irs.adapters.outbound.event_pub import EventPublisher
+from irs.config import CONFIG, Config
 from irs.core.interrogator import Interrogator
-
-from .config import CONFIG, Config
+from irs.main import consume_events
 
 
 async def run_subscriber(config: Config = CONFIG):
@@ -41,4 +41,4 @@ async def run_subscriber(config: Config = CONFIG):
 
 def run():
     """Synchronous entrypoint for Docker container, etc."""
-    asyncio.run(run_subscriber())
+    asyncio.run(consume_events())
