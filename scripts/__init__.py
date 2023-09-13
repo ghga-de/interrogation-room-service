@@ -12,14 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+#
 
-"""Entrypoint of the package"""
-
-import asyncio
-
-from irs.main import consume_events
-
-
-def run():
-    """Synchronous entrypoint for Docker container, etc."""
-    asyncio.run(consume_events())
+"""Scripts and utils used during development or in CI pipelines."""

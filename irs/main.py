@@ -12,14 +12,26 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-"""Entrypoint of the package"""
-
-import asyncio
-
-from irs.main import consume_events
+#
+"""Top-level object construction and dependency injection"""
+from irs.config import Config
+from irs.container import Container
 
 
-def run():
-    """Synchronous entrypoint for Docker container, etc."""
-    asyncio.run(consume_events())
+def get_configured_container(*, config: Config) -> Container:
+    """Create and configure a DI container."""
+
+    container = Container()
+    container.config.load_config(config)
+
+    return container
+
+
+async def consume_events(run_forever: bool = True):
+    """Run the event consumer"""
+
+    config = Config()
+
+    async with get_configured_container(config=config) as container:
+        event_subscriber = await container.event_subscriber()
+        await event_subscriber.run(forever=run_forever)

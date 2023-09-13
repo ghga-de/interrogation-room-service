@@ -18,7 +18,7 @@ import os
 from typing import Any, Collection, Mapping, Tuple
 
 import pytest
-from hexkit.providers.akafka.testutils import ExpectedEvent
+from hexkit.providers.akafka.testutils import ExpectedEvent, kafka_fixture  # noqa: F401
 from hexkit.providers.s3.testutils import s3_fixture  # noqa: F401
 from hexkit.utils import calc_part_size
 
@@ -31,8 +31,7 @@ from tests.fixtures.file_fixtures import (
     STAGING_BUCKET_ID,
     EncryptedDataFixture,
 )
-from tests.fixtures.kafka_fixtures import IRSKafkaFixture  # noqa: F401
-from tests.fixtures.kafka_fixtures import irs_kafka_fixture  # noqa: F401
+from tests.fixtures.joint import JointFixture, joint_fixture  # noqa: F401
 from tests.fixtures.keypair_fixtures import generate_keypair_fixture  # noqa: F401
 
 EKSS_NEW_SECRET = os.urandom(32)
@@ -66,7 +65,7 @@ def incoming_payload(data: EncryptedDataFixture) -> dict[str, Any]:
 async def test_failure_event(
     monkeypatch,
     encrypted_random_data: EncryptedDataFixture,  # noqa: F811
-    irs_kafka_fixture: IRSKafkaFixture,  # noqa: F811
+    joint_fixture: JointFixture,  # noqa: F811
 ):
     """
     Test the whole pipeline from receiving an event to notifying about failure
@@ -98,7 +97,7 @@ async def test_failure_event(
     payload_in["expected_decrypted_sha256"] = payload_in["expected_decrypted_sha256"][
         1:
     ]
-    event_in = incoming_irs_event(payload=payload_in, config=irs_kafka_fixture.config)
+    event_in = incoming_irs_event(payload=payload_in, config=joint_fixture.config)
 
     payload_out = {
         "file_id": FILE_ID,
@@ -108,15 +107,16 @@ async def test_failure_event(
     }
     expected_event_out = ExpectedEvent(
         payload=payload_out,
-        type_=irs_kafka_fixture.config.interrogation_failure_type,
+        type_=joint_fixture.config.interrogation_failure_type,
         key=FILE_ID,
     )
 
-    async with irs_kafka_fixture.record_events(
-        in_topic=irs_kafka_fixture.config.interrogation_topic,
+    consumer = await joint_fixture.container.event_subscriber()
+    async with joint_fixture.kafka.record_events(
+        in_topic=joint_fixture.config.interrogation_topic,
     ) as event_recorder:
-        await irs_kafka_fixture.publish_event(**event_in)
-        await irs_kafka_fixture.subscriber.run(forever=False)
+        await joint_fixture.kafka.publish_event(**event_in)
+        await consumer.run(forever=False)
 
     recorded_events = event_recorder.recorded_events
 
@@ -130,7 +130,7 @@ async def test_failure_event(
 async def test_success_event(
     monkeypatch,
     encrypted_random_data: EncryptedDataFixture,  # noqa: F811
-    irs_kafka_fixture: IRSKafkaFixture,  # noqa: F811
+    joint_fixture: JointFixture,  # noqa: F811
 ):
     """
     Test the whole pipeline from receiving an event to notifying about success
@@ -158,7 +158,7 @@ async def test_success_event(
     )
 
     payload_in = incoming_payload(encrypted_random_data)
-    event_in = incoming_irs_event(payload=payload_in, config=irs_kafka_fixture.config)
+    event_in = incoming_irs_event(payload=payload_in, config=joint_fixture.config)
 
     part_size = calc_part_size(file_size=encrypted_random_data.file_size)
 
@@ -174,15 +174,17 @@ async def test_success_event(
     }
     expected_event_out = ExpectedEvent(
         payload=payload_out,
-        type_=irs_kafka_fixture.config.interrogation_success_type,
+        type_=joint_fixture.config.interrogation_success_type,
         key=FILE_ID,
     )
 
-    async with irs_kafka_fixture.record_events(
-        in_topic=irs_kafka_fixture.config.interrogation_topic,
+    consumer = await joint_fixture.container.event_subscriber()
+    async with joint_fixture.kafka.record_events(
+        in_topic=joint_fixture.config.interrogation_topic,
     ) as event_recorder:
-        await irs_kafka_fixture.publish_event(**event_in)
-        await irs_kafka_fixture.subscriber.run(forever=False)
+        await joint_fixture.kafka.publish_event(**event_in)
+
+        await consumer.run(forever=False)
 
     recorded_events = event_recorder.recorded_events
 
