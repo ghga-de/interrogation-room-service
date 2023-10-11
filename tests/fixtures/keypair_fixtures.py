@@ -12,11 +12,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Contains a test fixture for generating keypairs"""
+
 import os
+from collections.abc import AsyncGenerator
 from dataclasses import dataclass
 from pathlib import Path
 from tempfile import mkstemp
-from typing import AsyncGenerator
 
 import pytest_asyncio
 from crypt4gh.keys import get_private_key, get_public_key

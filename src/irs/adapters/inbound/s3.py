@@ -15,7 +15,7 @@
 """Provides helpers for S3 interaction"""
 
 import math
-from typing import AsyncGenerator, Sequence
+from collections.abc import AsyncGenerator, Sequence
 
 import requests
 from hexkit.providers.s3.provider import S3Config, S3ObjectStorage
@@ -27,9 +27,7 @@ from irs.config import CONFIG
 def calc_part_ranges(
     *, part_size: int, object_size: int, byte_offset: int
 ) -> Sequence[tuple[int, int]]:
-    """
-    Calculate and return the ranges (start, end) of file parts as a list of tuples.
-    """
+    """Calculate and return the ranges (start, end) of file parts as a list of tuples."""
     # calc the ranges for the parts that have the full part_size:
     full_part_number = math.floor(object_size / part_size)
 

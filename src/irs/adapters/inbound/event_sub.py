@@ -40,11 +40,11 @@ class EventSubTanslatorConfig(BaseSettings):
 
 class EventSubTranslator(EventSubscriberProtocol):
     """A triple hexagonal translator compatible with the EventSubscriberProtocol that
-    is used to received events relevant for file uploads."""
+    is used to received events relevant for file uploads.
+    """
 
     def __init__(self, config: EventSubTanslatorConfig, interrogator: InterrogatorPort):
         """Initialize with config parameters and core dependencies."""
-
         self.topics_of_interest = [
             config.upload_received_event_topic,
         ]
@@ -67,7 +67,6 @@ class EventSubTranslator(EventSubscriberProtocol):
             type_ (str): The type of the event.
             topic (str): Name of the topic the event was published to.
         """
-
         validated_payload = get_validated_payload(
             payload=payload,
             schema=event_schemas.FileUploadReceived,

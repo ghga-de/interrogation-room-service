@@ -23,7 +23,7 @@ class EventPublisherPort(ABC):
     """An interface for an adapter that publishes events happening to this service."""
 
     @abstractmethod
-    async def publish_validation_success(
+    async def publish_validation_success(  # noqa: PLR0913
         self,
         *,
         file_id: str,
@@ -42,7 +42,7 @@ class EventPublisherPort(ABC):
         ...
 
     @abstractmethod
-    async def publish_validation_failure(
+    async def publish_validation_failure(  # noqa: PLR0913
         self,
         *,
         file_id: str,

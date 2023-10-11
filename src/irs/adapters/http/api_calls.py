@@ -15,7 +15,6 @@
 """HTTP calls to other service APIs happen here"""
 
 import base64
-from typing import Tuple
 
 import requests
 
@@ -25,7 +24,7 @@ from irs.adapters.http.exception_translation import ResponseExceptionTranslator
 
 def call_eks_api(
     *, file_part: bytes, public_key: str, api_url: str
-) -> Tuple[bytes, bytes, str, int]:
+) -> tuple[bytes, bytes, str, int]:
     """Call EKS to get encryption secret and file content offset from envelope"""
     data = base64.b64encode(file_part).decode("utf-8")
     request_body = {"public_key": public_key, "file_part": data}

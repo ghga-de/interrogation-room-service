@@ -13,25 +13,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-"""Top-level object construction and dependency injection"""
-from irs.config import Config
-from irs.container import Container
+
+"""
+Adds wrapper classes to translate httpyexpect errors and check against
+provided exception specs for all API endpoints
+"""
+
+import requests
+from ghga_service_commons.httpyexpect.client import ExceptionMapping, ResponseTranslator
 
 
-def get_configured_container(*, config: Config) -> Container:
-    """Create and configure a DI container."""
+class ResponseExceptionTranslator:
+    """Base class providing behaviour and injection point for spec"""
 
-    container = Container()
-    container.config.load_config(config)
+    def __init__(self, *, spec: dict[int, object]) -> None:
+        self._exception_map = ExceptionMapping(spec)
 
-    return container
-
-
-async def consume_events(run_forever: bool = True):
-    """Run the event consumer"""
-
-    config = Config()
-
-    async with get_configured_container(config=config) as container:
-        event_subscriber = await container.event_subscriber()
-        await event_subscriber.run(forever=run_forever)
+    def handle(self, response: requests.Response):
+        """Translate and raise error, if defined by spec"""
+        translator = ResponseTranslator(response, exception_map=self._exception_map)
+        translator.raise_for_error()

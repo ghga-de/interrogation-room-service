@@ -20,12 +20,10 @@ from datetime import datetime
 
 
 class InterrogatorPort(ABC):
-    """
-    The interface of a service for validating the content of encrypted files.
-    """
+    """The interface of a service for validating the content of encrypted files."""
 
     @abstractmethod
-    async def interrogate(  # pylint: disable=too-many-locals
+    async def interrogate(  # noqa: PLR0913
         self,
         *,
         file_id: str,

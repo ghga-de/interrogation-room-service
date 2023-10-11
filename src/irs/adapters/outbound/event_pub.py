@@ -57,11 +57,10 @@ class EventPublisher(EventPublisherPort):
         self, *, config: EventPubTanslatorConfig, provider: EventPublisherProtocol
     ):
         """Initialize with a suitable protocol provider."""
-
         self._config = config
         self._provider = provider
 
-    async def publish_validation_success(
+    async def publish_validation_success(  # noqa: PLR0913
         self,
         *,
         file_id: str,
@@ -77,7 +76,6 @@ class EventPublisher(EventPublisherPort):
         content_checksum_sha256: str,
     ):  # pylint: disable=too-many-arguments
         """Produce and send an event if checksum validation was successful"""
-
         event_payload = event_schemas.FileUploadValidationSuccess(
             file_id=file_id,
             object_id=object_id,
@@ -98,7 +96,7 @@ class EventPublisher(EventPublisherPort):
             key=file_id,
         )
 
-    async def publish_validation_failure(
+    async def publish_validation_failure(  # noqa: PLR0913
         self,
         *,
         file_id: str,
