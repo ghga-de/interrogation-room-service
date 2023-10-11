@@ -17,16 +17,19 @@
 import hashlib
 import sys
 import tempfile
+from collections.abc import AsyncGenerator
 from dataclasses import dataclass
 from datetime import datetime
-from typing import AsyncGenerator
 
 import crypt4gh.header
 import crypt4gh.lib
 import pytest_asyncio
 from ghga_service_commons.utils.temp_files import big_temp_file
-from hexkit.providers.s3.testutils import s3_fixture  # noqa: F401
-from hexkit.providers.s3.testutils import FileObject, S3Fixture
+from hexkit.providers.s3.testutils import (
+    FileObject,
+    S3Fixture,
+    s3_fixture,  # noqa: F401
+)
 
 from .keypair_fixtures import KeypairFixture, generate_keypair_fixture  # noqa: F401
 

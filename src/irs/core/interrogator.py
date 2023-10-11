@@ -19,7 +19,6 @@ import math
 import os
 import uuid
 from datetime import datetime
-from typing import List, Tuple
 
 from crypt4gh.lib import CIPHER_SEGMENT_SIZE, CryptoError, decrypt_block
 from hexkit.utils import calc_part_size
@@ -45,7 +44,7 @@ from irs.ports.outbound.event_pub import EventPublisherPort
 class CipherSegmentProcessor:  # pylint: disable=too-many-instance-attributes
     """Process inbox file for checksum generation and reencryption"""
 
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         *,
         download_url: str,
@@ -105,7 +104,6 @@ class CipherSegmentProcessor:  # pylint: disable=too-many-instance-attributes
         Utility function to generate a nonce, encrypt data with Chacha20,
         and authenticate it with Poly1305.
         """
-
         nonce = os.urandom(12)
         encrypted_data = crypto_aead_chacha20poly1305_ietf_encrypt(
             data, None, nonce, key
@@ -120,9 +118,8 @@ class CipherSegmentProcessor:  # pylint: disable=too-many-instance-attributes
             hashlib.sha256(file_part).hexdigest(),
         )
 
-    def _get_segments(self, *, file_part: bytes) -> Tuple[List[bytes], bytes]:
+    def _get_segments(self, *, file_part: bytes) -> tuple[list[bytes], bytes]:
         """Chunk file part into decryptable segments"""
-
         num_segments = len(file_part) / CIPHER_SEGMENT_SIZE
         full_segments = int(num_segments)
         segments = [
@@ -140,7 +137,6 @@ class CipherSegmentProcessor:  # pylint: disable=too-many-instance-attributes
 
     async def _process_parts(self):
         """High-level part processing, chunking into ciphersegments"""
-
         async for part in retrieve_parts(
             url=self.download_url,
             object_size=self.object_size,
@@ -157,7 +153,7 @@ class CipherSegmentProcessor:  # pylint: disable=too-many-instance-attributes
 
         await self._process_remaining(incomplete_ciphersegment=incomplete_ciphersegment)
 
-    async def _process_segments(self, *, ciphersegments: List[bytes]):
+    async def _process_segments(self, *, ciphersegments: list[bytes]):
         """Process complete ciphersegments"""
         for ciphersegment in ciphersegments:
             try:
@@ -180,7 +176,6 @@ class CipherSegmentProcessor:  # pylint: disable=too-many-instance-attributes
 
     async def _process_remaining(self, *, incomplete_ciphersegment: bytes):
         """Process last, possibly incomplete ciphersegment"""
-
         if incomplete_ciphersegment:
             try:
                 decrypted = decrypt_block(
@@ -237,7 +232,7 @@ class Interrogator(InterrogatorPort):
         """Initialize class instance with configs and outbound adapter objects."""
         self._event_publisher = event_publisher
 
-    async def interrogate(  # pylint: disable=too-many-locals
+    async def interrogate(  # noqa: PLR0913
         self,
         *,
         file_id: str,

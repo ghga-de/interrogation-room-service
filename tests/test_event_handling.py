@@ -12,10 +12,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+"""Tests for event handling"""
 import base64
 import os
-from typing import Any, Collection, Mapping, Tuple
+from collections.abc import Collection, Mapping
+from typing import Any
 
 import pytest
 from hexkit.providers.akafka.testutils import ExpectedEvent, kafka_fixture  # noqa: F401
@@ -23,13 +24,13 @@ from hexkit.providers.s3.testutils import s3_fixture  # noqa: F401
 from hexkit.utils import calc_part_size
 
 from tests.fixtures.config import Config
-from tests.fixtures.file_fixtures import encrypted_random_data  # noqa: F401
 from tests.fixtures.file_fixtures import (
     FILE_ID,
     INBOX_BUCKET_ID,
     OBJECT_ID,
     STAGING_BUCKET_ID,
     EncryptedDataFixture,
+    encrypted_random_data,  # noqa: F401
 )
 from tests.fixtures.joint import JointFixture, joint_fixture  # noqa: F401
 from tests.fixtures.keypair_fixtures import generate_keypair_fixture  # noqa: F401
@@ -67,14 +68,12 @@ async def test_failure_event(
     encrypted_random_data: EncryptedDataFixture,  # noqa: F811
     joint_fixture: JointFixture,  # noqa: F811
 ):
-    """
-    Test the whole pipeline from receiving an event to notifying about failure
-    """
+    """Test the whole pipeline from receiving an event to notifying about failure"""
 
     # explicit patching required for now
     def eks_patch(
         *, file_part: bytes, public_key: bytes, api_url: str
-    ) -> Tuple[bytes, bytes, str, int]:
+    ) -> tuple[bytes, bytes, str, int]:
         """Monkeypatch to emulate API Call"""
         return (
             encrypted_random_data.file_secret,
@@ -132,14 +131,12 @@ async def test_success_event(
     encrypted_random_data: EncryptedDataFixture,  # noqa: F811
     joint_fixture: JointFixture,  # noqa: F811
 ):
-    """
-    Test the whole pipeline from receiving an event to notifying about success
-    """
+    """Test the whole pipeline from receiving an event to notifying about success"""
 
     # explicit patching required for now
     def eks_patch(
         *, file_part: bytes, public_key: bytes, api_url: str
-    ) -> Tuple[bytes, bytes, str, int]:
+    ) -> tuple[bytes, bytes, str, int]:
         """Monkeypatch to emulate API Call"""
         return (
             encrypted_random_data.file_secret,
