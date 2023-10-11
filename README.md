@@ -19,13 +19,13 @@ We recommend using the provided Docker container.
 
 A pre-build version is available at [docker hub](https://hub.docker.com/repository/docker/ghga/interrogation-room-service):
 ```bash
-docker pull ghga/interrogation-room-service:0.3.1
+docker pull ghga/interrogation-room-service:0.3.2
 ```
 
 Or you can build the container yourself from the [`./Dockerfile`](./Dockerfile):
 ```bash
 # Execute in the repo's root dir:
-docker build -t ghga/interrogation-room-service:0.3.1 .
+docker build -t ghga/interrogation-room-service:0.3.2 .
 ```
 
 For production-ready deployment, we recommend using Kubernetes, however,
@@ -33,7 +33,7 @@ for simple use cases, you could execute the service using docker
 on a single server:
 ```bash
 # The entrypoint is preconfigured:
-docker run -p 8080:8080 ghga/interrogation-room-service:0.3.1 --help
+docker run -p 8080:8080 ghga/interrogation-room-service:0.3.2 --help
 ```
 
 If you prefer not to use containers, you may install the service from source:
@@ -63,13 +63,13 @@ The service requires the following configuration parameters:
 
 - **`s3_access_key_id`** *(string)*: Part of credentials for login into the S3 service. See: https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html.
 
-- **`s3_secret_access_key`** *(string)*: Part of credentials for login into the S3 service. See: https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html.
+- **`s3_secret_access_key`** *(string, format: password)*: Part of credentials for login into the S3 service. See: https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html.
 
-- **`s3_session_token`** *(string)*: Part of credentials for login into the S3 service. See: https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html.
+- **`s3_session_token`** *(string, format: password)*: Part of credentials for login into the S3 service. See: https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html.
 
-- **`aws_config_ini`** *(string)*: Path to a config file for specifying more advanced S3 parameters. This should follow the format described here: https://boto3.amazonaws.com/v1/documentation/api/latest/guide/configuration.html#using-a-configuration-file.
+- **`aws_config_ini`** *(string, format: path)*: Path to a config file for specifying more advanced S3 parameters. This should follow the format described here: https://boto3.amazonaws.com/v1/documentation/api/latest/guide/configuration.html#using-a-configuration-file.
 
-- **`service_name`** *(string)*: Default: `interrogation_room`.
+- **`service_name`** *(string)*: Default: `"interrogation_room"`.
 
 - **`service_instance_id`** *(string)*: A string that uniquely identifies this instance across all instances of this service. A globally unique Kafka client ID will be created by concatenating the service_name and the service_instance_id.
 
@@ -139,7 +139,7 @@ Moreover, inside the devcontainer, a convenience commands `dev_install` is avail
 It installs the service with all development dependencies, installs pre-commit.
 
 The installation is performed automatically when you build the devcontainer. However,
-if you update dependencies in the [`./setup.cfg`](./setup.cfg) or the
+if you update dependencies in the [`./pyproject.toml`](./pyproject.toml) or the
 [`./requirements-dev.txt`](./requirements-dev.txt), please run it again.
 
 ## License
