@@ -18,7 +18,8 @@ from ghga_event_schemas import pydantic_ as event_schemas
 from ghga_event_schemas.validation import get_validated_payload
 from hexkit.custom_types import Ascii, JsonObject
 from hexkit.protocols.eventsub import EventSubscriberProtocol
-from pydantic import BaseSettings, Field
+from pydantic import Field
+from pydantic_settings import BaseSettings
 
 from irs.ports.inbound.interrogator import InterrogatorPort
 
@@ -29,12 +30,12 @@ class EventSubTanslatorConfig(BaseSettings):
     upload_received_event_topic: str = Field(
         ...,
         description="Name of the topic to publish events that inform about new file uploads.",
-        example="file_uploads",
+        examples=["file_uploads"],
     )
     upload_received_event_type: str = Field(
         ...,
         description="The type to use for events that inform about new file uploads.",
-        example="file_upload_received",
+        examples=["file_upload_received"],
     )
 
 

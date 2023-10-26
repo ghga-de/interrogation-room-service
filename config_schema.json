@@ -1,150 +1,148 @@
 {
-  "title": "ModSettings",
+  "additionalProperties": false,
   "description": "Modifies the orginal Settings class provided by the user",
-  "type": "object",
   "properties": {
     "interrogation_topic": {
-      "title": "Interrogation Topic",
       "description": "Name of the topic used for events informing about the outcome of file validations.",
-      "example": "file_interrogation",
-      "env_names": [
-        "irs_interrogation_topic"
+      "examples": [
+        "file_interrogation"
       ],
+      "title": "Interrogation Topic",
       "type": "string"
     },
     "interrogation_success_type": {
-      "title": "Interrogation Success Type",
       "description": "The type used for events informing about the success of a file validation.",
-      "example": "file_validation_success",
-      "env_names": [
-        "irs_interrogation_success_type"
+      "examples": [
+        "file_validation_success"
       ],
+      "title": "Interrogation Success Type",
       "type": "string"
     },
     "interrogation_failure_type": {
-      "title": "Interrogation Failure Type",
       "description": "The type used for events informing about the failure of a file validation.",
-      "example": "file_validation_failure",
-      "env_names": [
-        "irs_interrogation_failure_type"
+      "examples": [
+        "file_validation_failure"
       ],
+      "title": "Interrogation Failure Type",
       "type": "string"
     },
     "upload_received_event_topic": {
-      "title": "Upload Received Event Topic",
       "description": "Name of the topic to publish events that inform about new file uploads.",
-      "example": "file_uploads",
-      "env_names": [
-        "irs_upload_received_event_topic"
+      "examples": [
+        "file_uploads"
       ],
+      "title": "Upload Received Event Topic",
       "type": "string"
     },
     "upload_received_event_type": {
-      "title": "Upload Received Event Type",
       "description": "The type to use for events that inform about new file uploads.",
-      "example": "file_upload_received",
-      "env_names": [
-        "irs_upload_received_event_type"
+      "examples": [
+        "file_upload_received"
       ],
+      "title": "Upload Received Event Type",
       "type": "string"
     },
     "s3_endpoint_url": {
-      "title": "S3 Endpoint Url",
       "description": "URL to the S3 API.",
-      "example": "http://localhost:4566",
-      "env_names": [
-        "irs_s3_endpoint_url"
+      "examples": [
+        "http://localhost:4566"
       ],
+      "title": "S3 Endpoint Url",
       "type": "string"
     },
     "s3_access_key_id": {
-      "title": "S3 Access Key Id",
       "description": "Part of credentials for login into the S3 service. See: https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html",
-      "example": "my-access-key-id",
-      "env_names": [
-        "irs_s3_access_key_id"
+      "examples": [
+        "my-access-key-id"
       ],
+      "title": "S3 Access Key Id",
       "type": "string"
     },
     "s3_secret_access_key": {
-      "title": "S3 Secret Access Key",
       "description": "Part of credentials for login into the S3 service. See: https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html",
-      "example": "my-secret-access-key",
-      "env_names": [
-        "irs_s3_secret_access_key"
+      "examples": [
+        "my-secret-access-key"
       ],
+      "format": "password",
+      "title": "S3 Secret Access Key",
       "type": "string",
-      "writeOnly": true,
-      "format": "password"
+      "writeOnly": true
     },
     "s3_session_token": {
-      "title": "S3 Session Token",
-      "description": "Part of credentials for login into the S3 service. See: https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html",
-      "example": "my-session-token",
-      "env_names": [
-        "irs_s3_session_token"
+      "anyOf": [
+        {
+          "format": "password",
+          "type": "string",
+          "writeOnly": true
+        },
+        {
+          "type": "null"
+        }
       ],
-      "type": "string",
-      "writeOnly": true,
-      "format": "password"
+      "default": null,
+      "description": "Part of credentials for login into the S3 service. See: https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html",
+      "examples": [
+        "my-session-token"
+      ],
+      "title": "S3 Session Token"
     },
     "aws_config_ini": {
-      "title": "Aws Config Ini",
-      "description": "Path to a config file for specifying more advanced S3 parameters. This should follow the format described here: https://boto3.amazonaws.com/v1/documentation/api/latest/guide/configuration.html#using-a-configuration-file",
-      "example": "~/.aws/config",
-      "env_names": [
-        "irs_aws_config_ini"
+      "anyOf": [
+        {
+          "format": "path",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
       ],
-      "type": "string",
-      "format": "path"
+      "default": null,
+      "description": "Path to a config file for specifying more advanced S3 parameters. This should follow the format described here: https://boto3.amazonaws.com/v1/documentation/api/latest/guide/configuration.html#using-a-configuration-file",
+      "examples": [
+        "~/.aws/config"
+      ],
+      "title": "Aws Config Ini"
     },
     "service_name": {
-      "title": "Service Name",
       "default": "interrogation_room",
-      "env_names": [
-        "irs_service_name"
-      ],
+      "title": "Service Name",
       "type": "string"
     },
     "service_instance_id": {
-      "title": "Service Instance Id",
       "description": "A string that uniquely identifies this instance across all instances of this service. A globally unique Kafka client ID will be created by concatenating the service_name and the service_instance_id.",
-      "example": "germany-bw-instance-001",
-      "env_names": [
-        "irs_service_instance_id"
+      "examples": [
+        "germany-bw-instance-001"
       ],
+      "title": "Service Instance Id",
       "type": "string"
     },
     "kafka_servers": {
-      "title": "Kafka Servers",
       "description": "A list of connection strings to connect to Kafka bootstrap servers.",
-      "example": [
-        "localhost:9092"
+      "examples": [
+        [
+          "localhost:9092"
+        ]
       ],
-      "env_names": [
-        "irs_kafka_servers"
-      ],
-      "type": "array",
       "items": {
         "type": "string"
-      }
+      },
+      "title": "Kafka Servers",
+      "type": "array"
     },
     "staging_bucket": {
-      "title": "Staging Bucket",
       "description": "Bucket ID representing the staging area for re-encrypted files.",
-      "example": "staging",
-      "env_names": [
-        "irs_staging_bucket"
+      "examples": [
+        "staging"
       ],
+      "title": "Staging Bucket",
       "type": "string"
     },
     "eks_url": {
-      "title": "Eks Url",
       "description": "URL pointing to the Encryption Key Store service.",
-      "example": "http://127.0.0.1/eks",
-      "env_names": [
-        "irs_eks_url"
+      "examples": [
+        "http://127.0.0.1/eks"
       ],
+      "title": "Eks Url",
       "type": "string"
     }
   },
@@ -162,5 +160,6 @@
     "staging_bucket",
     "eks_url"
   ],
-  "additionalProperties": false
+  "title": "ModSettings",
+  "type": "object"
 }

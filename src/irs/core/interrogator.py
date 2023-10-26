@@ -18,7 +18,6 @@ import hashlib
 import math
 import os
 import uuid
-from datetime import datetime
 
 from crypt4gh.lib import CIPHER_SEGMENT_SIZE, CryptoError, decrypt_block
 from hexkit.utils import calc_part_size
@@ -239,7 +238,7 @@ class Interrogator(InterrogatorPort):
         source_object_id: str,
         source_bucket_id: str,
         public_key: str,
-        upload_date: datetime,
+        upload_date: str,
         decrypted_size: int,
         sha256_checksum: str,
     ):

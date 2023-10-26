@@ -15,11 +15,11 @@
 """KafkaEventPublisher for file upload validation success/failure event details"""
 
 import json
-from datetime import datetime
 
 from ghga_event_schemas import pydantic_ as event_schemas
 from hexkit.protocols.eventpub import EventPublisherProtocol
-from pydantic import BaseSettings, Field
+from pydantic import Field
+from pydantic_settings import BaseSettings
 
 from irs.ports.outbound.event_pub import EventPublisherPort
 
@@ -32,21 +32,21 @@ class EventPubTanslatorConfig(BaseSettings):
         description=(
             "Name of the topic used for events informing about the outcome of file validations."
         ),
-        example="file_interrogation",
+        examples=["file_interrogation"],
     )
     interrogation_success_type: str = Field(
         ...,
         description=(
             "The type used for events informing about the success of a file validation."
         ),
-        example="file_validation_success",
+        examples=["file_validation_success"],
     )
     interrogation_failure_type: str = Field(
         ...,
         description=(
             "The type used for events informing about the failure of a file validation."
         ),
-        example="file_validation_failure",
+        examples=["file_validation_failure"],
     )
 
 
@@ -66,7 +66,7 @@ class EventPublisher(EventPublisherPort):
         file_id: str,
         object_id: str,
         bucket_id: str,
-        upload_date: datetime,
+        upload_date: str,
         secret_id: str,
         offset: int,
         part_size: int,
@@ -77,6 +77,7 @@ class EventPublisher(EventPublisherPort):
     ):  # pylint: disable=too-many-arguments
         """Produce and send an event if checksum validation was successful"""
         event_payload = event_schemas.FileUploadValidationSuccess(
+            s3_endpoint_alias="test",
             file_id=file_id,
             object_id=object_id,
             bucket_id=bucket_id,
@@ -90,7 +91,7 @@ class EventPublisher(EventPublisherPort):
             decrypted_sha256=content_checksum_sha256,
         )
         await self._provider.publish(
-            payload=json.loads(event_payload.json()),
+            payload=json.loads(event_payload.model_dump_json()),
             type_=self._config.interrogation_success_type,
             topic=self._config.interrogation_topic,
             key=file_id,
@@ -102,7 +103,7 @@ class EventPublisher(EventPublisherPort):
         file_id: str,
         object_id: str,
         bucket_id: str,
-        upload_date: datetime,
+        upload_date: str,
         cause: str = "Checksum mismatch",
     ):
         """
@@ -110,6 +111,7 @@ class EventPublisher(EventPublisherPort):
         if an exception was encountered
         """
         event_payload = event_schemas.FileUploadValidationFailure(
+            s3_endpoint_alias="test",
             file_id=file_id,
             object_id=object_id,
             bucket_id=bucket_id,
@@ -117,7 +119,7 @@ class EventPublisher(EventPublisherPort):
             reason=cause,
         )
         await self._provider.publish(
-            payload=json.loads(event_payload.json()),
+            payload=json.loads(event_payload.model_dump_json()),
             type_=self._config.interrogation_failure_type,
             topic=self._config.interrogation_topic,
             key=file_id,
