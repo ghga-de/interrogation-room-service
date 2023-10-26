@@ -40,7 +40,7 @@ from irs.ports.inbound.interrogator import InterrogatorPort
 from irs.ports.outbound.event_pub import EventPublisherPort
 
 
-class CipherSegmentProcessor:  # pylint: disable=too-many-instance-attributes
+class CipherSegmentProcessor:
     """Process inbox file for checksum generation and reencryption"""
 
     def __init__(  # noqa: PLR0913

@@ -57,7 +57,7 @@ class EventSubTranslator(EventSubscriberProtocol):
 
         self._config = config
 
-    async def _consume_validated(  # pylint: disable=unused-argument
+    async def _consume_validated(
         self, *, payload: JsonObject, type_: Ascii, topic: Ascii
     ) -> None:
         """

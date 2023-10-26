@@ -74,7 +74,7 @@ class EventPublisher(EventPublisherPort):
         part_checksums_md5: list[str],
         part_checksums_sha256: list[str],
         content_checksum_sha256: str,
-    ):  # pylint: disable=too-many-arguments
+    ):
         """Produce and send an event if checksum validation was successful"""
         event_payload = event_schemas.FileUploadValidationSuccess(
             s3_endpoint_alias="test",
