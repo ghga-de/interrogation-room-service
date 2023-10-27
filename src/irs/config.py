@@ -30,12 +30,12 @@ class Config(KafkaConfig, S3Config, EventSubTanslatorConfig, EventPubTanslatorCo
     service_name: str = "interrogation_room"
     staging_bucket: str = Field(
         ...,
-        example="staging",
+        examples=["staging"],
         description=("Bucket ID representing the staging area for re-encrypted files."),
     )
     eks_url: str = Field(
         ...,
-        example="http://127.0.0.1/eks",
+        examples=["http://127.0.0.1/eks"],
         description=("URL pointing to the Encryption Key Store service."),
     )
 

@@ -16,7 +16,6 @@
 """Interfaces for event publishing adapters and the exception they may throw."""
 
 from abc import ABC, abstractmethod
-from datetime import datetime
 
 
 class EventPublisherPort(ABC):
@@ -29,7 +28,7 @@ class EventPublisherPort(ABC):
         file_id: str,
         object_id: str,
         bucket_id: str,
-        upload_date: datetime,
+        upload_date: str,
         secret_id: str,
         offset: int,
         part_size: int,
@@ -48,7 +47,7 @@ class EventPublisherPort(ABC):
         file_id: str,
         object_id: str,
         bucket_id: str,
-        upload_date: datetime,
+        upload_date: str,
         cause: str = "Checksum mismatch",
     ) -> None:
         """Publish event informing that a validation was notsuccessfull."""

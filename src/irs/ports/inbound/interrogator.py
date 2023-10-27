@@ -16,7 +16,6 @@
 """Interface for validating uploaded files"""
 
 from abc import ABC, abstractmethod
-from datetime import datetime
 
 
 class InterrogatorPort(ABC):
@@ -30,7 +29,7 @@ class InterrogatorPort(ABC):
         source_object_id: str,
         source_bucket_id: str,
         public_key: str,
-        upload_date: datetime,
+        upload_date: str,
         decrypted_size: int,
         sha256_checksum: str,
     ):

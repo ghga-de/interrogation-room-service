@@ -52,6 +52,7 @@ def incoming_irs_event(
 def incoming_payload(data: EncryptedDataFixture) -> dict[str, Any]:
     """Payload arriving at the interrogation room"""
     return {
+        "s3_endpoint_alias": "test",
         "file_id": FILE_ID,
         "object_id": OBJECT_ID,
         "bucket_id": INBOX_BUCKET_ID,
@@ -99,6 +100,7 @@ async def test_failure_event(
     event_in = incoming_irs_event(payload=payload_in, config=joint_fixture.config)
 
     payload_out = {
+        "s3_endpoint_alias": "test",
         "file_id": FILE_ID,
         "bucket_id": STAGING_BUCKET_ID,
         "reason": "Checksum mismatch",
@@ -160,6 +162,7 @@ async def test_success_event(
     part_size = calc_part_size(file_size=encrypted_random_data.file_size)
 
     payload_out = {
+        "s3_endpoint_alias": "test",
         "file_id": FILE_ID,
         "object_id": OBJECT_ID,
         "bucket_id": STAGING_BUCKET_ID,
@@ -189,5 +192,5 @@ async def test_success_event(
     event = recorded_events[0]
 
     expected_event_out.payload["object_id"] = event.payload["object_id"]
-    for key in payload_out.keys():
+    for key in payload_out:
         assert event.payload[key] == expected_event_out.payload[key]
