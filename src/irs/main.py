@@ -15,21 +15,12 @@
 #
 """Top-level object construction and dependency injection"""
 from irs.config import Config
-from irs.container import Container
-
-
-def get_configured_container(*, config: Config) -> Container:
-    """Create and configure a DI container."""
-    container = Container()
-    container.config.load_config(config)
-
-    return container
+from irs.inject import prepare_event_subscriber
 
 
 async def consume_events(run_forever: bool = True):
     """Run the event consumer"""
     config = Config()  # type: ignore [call-arg]
 
-    async with get_configured_container(config=config) as container:
-        event_subscriber = await container.event_subscriber()
+    async with prepare_event_subscriber(config=config) as event_subscriber:
         await event_subscriber.run(forever=run_forever)
