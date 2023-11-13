@@ -20,11 +20,12 @@ from collections.abc import AsyncGenerator
 from dataclasses import dataclass
 
 import pytest_asyncio
+from hexkit.providers.akafka import KafkaEventSubscriber
 from hexkit.providers.akafka.testutils import KafkaFixture, kafka_fixture  # noqa: F401
 
 from irs.config import Config
-from irs.container import Container
-from irs.main import get_configured_container
+from irs.inject import prepare_core, prepare_event_subscriber
+from irs.ports.inbound.interrogator import InterrogatorPort
 from tests.fixtures.config import get_config
 
 
@@ -33,7 +34,8 @@ class JointFixture:
     """Returned by the `joint_fixture`."""
 
     config: Config
-    container: Container
+    event_subscriber: KafkaEventSubscriber
+    interrogator: InterrogatorPort
     kafka: KafkaFixture
 
 
@@ -45,10 +47,14 @@ async def joint_fixture(
     # merge configs from different sources with the default one:
     config = get_config(sources=[kafka_fixture.config])
 
-    # create a DI container instance
-    async with get_configured_container(config=config) as container:
-        yield JointFixture(
-            config=config,
-            container=container,
-            kafka=kafka_fixture,
-        )
+    # Create joint_fixure using the injection
+    async with prepare_core(config=config) as interrogator:
+        async with prepare_event_subscriber(
+            config=config, interrogator_override=interrogator
+        ) as event_subscriber:
+            yield JointFixture(
+                config=config,
+                event_subscriber=event_subscriber,
+                interrogator=interrogator,
+                kafka=kafka_fixture,
+            )
