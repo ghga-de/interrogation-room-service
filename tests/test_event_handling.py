@@ -112,12 +112,11 @@ async def test_failure_event(
         key=FILE_ID,
     )
 
-    consumer = await joint_fixture.container.event_subscriber()
     async with joint_fixture.kafka.record_events(
         in_topic=joint_fixture.config.interrogation_topic,
     ) as event_recorder:
         await joint_fixture.kafka.publish_event(**event_in)
-        await consumer.run(forever=False)
+        await joint_fixture.event_subscriber.run(forever=False)
 
     recorded_events = event_recorder.recorded_events
 
@@ -178,13 +177,12 @@ async def test_success_event(
         key=FILE_ID,
     )
 
-    consumer = await joint_fixture.container.event_subscriber()
     async with joint_fixture.kafka.record_events(
         in_topic=joint_fixture.config.interrogation_topic,
     ) as event_recorder:
         await joint_fixture.kafka.publish_event(**event_in)
 
-        await consumer.run(forever=False)
+        await joint_fixture.event_subscriber.run(forever=False)
 
     recorded_events = event_recorder.recorded_events
 
