@@ -81,4 +81,5 @@ class EventSubTranslator(EventSubscriberProtocol):
             upload_date=validated_payload.upload_date,
             decrypted_size=validated_payload.decrypted_size,
             sha256_checksum=validated_payload.expected_decrypted_sha256,
+            s3_endpoint_alias=validated_payload.s3_endpoint_alias,
         )

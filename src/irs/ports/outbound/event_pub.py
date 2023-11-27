@@ -36,6 +36,7 @@ class EventPublisherPort(ABC):
         part_checksums_md5: list[str],
         part_checksums_sha256: list[str],
         content_checksum_sha256: str,
+        s3_endpoint_alias: str,
     ) -> None:
         """Publish event informing that a validation was successfull."""
         ...
@@ -48,6 +49,7 @@ class EventPublisherPort(ABC):
         object_id: str,
         bucket_id: str,
         upload_date: str,
+        s3_endpoint_alias: str,
         cause: str = "Checksum mismatch",
     ) -> None:
         """Publish event informing that a validation was notsuccessfull."""

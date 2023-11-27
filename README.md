@@ -20,13 +20,13 @@ We recommend using the provided Docker container.
 
 A pre-build version is available at [docker hub](https://hub.docker.com/repository/docker/ghga/interrogation-room-service):
 ```bash
-docker pull ghga/interrogation-room-service:0.3.2
+docker pull ghga/interrogation-room-service:1.0.0
 ```
 
 Or you can build the container yourself from the [`./Dockerfile`](./Dockerfile):
 ```bash
 # Execute in the repo's root dir:
-docker build -t ghga/interrogation-room-service:0.3.2 .
+docker build -t ghga/interrogation-room-service:1.0.0 .
 ```
 
 For production-ready deployment, we recommend using Kubernetes, however,
@@ -34,7 +34,7 @@ for simple use cases, you could execute the service using docker
 on a single server:
 ```bash
 # The entrypoint is preconfigured:
-docker run -p 8080:8080 ghga/interrogation-room-service:0.3.2 --help
+docker run -p 8080:8080 ghga/interrogation-room-service:1.0.0 --help
 ```
 
 If you prefer not to use containers, you may install the service from source:
@@ -101,69 +101,11 @@ The service requires the following configuration parameters:
   ```
 
 
-- **`s3_endpoint_url`** *(string)*: URL to the S3 API.
+- **`object_storages`** *(object)*: Can contain additional properties.
 
+  - **Additional Properties**: Refer to *[#/$defs/S3ObjectStorageNodeConfig](#$defs/S3ObjectStorageNodeConfig)*.
 
-  Examples:
-
-  ```json
-  "http://localhost:4566"
-  ```
-
-
-- **`s3_access_key_id`** *(string)*: Part of credentials for login into the S3 service. See: https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html.
-
-
-  Examples:
-
-  ```json
-  "my-access-key-id"
-  ```
-
-
-- **`s3_secret_access_key`** *(string, format: password)*: Part of credentials for login into the S3 service. See: https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html.
-
-
-  Examples:
-
-  ```json
-  "my-secret-access-key"
-  ```
-
-
-- **`s3_session_token`**: Part of credentials for login into the S3 service. See: https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html. Default: `null`.
-
-  - **Any of**
-
-    - *string, format: password*
-
-    - *null*
-
-
-  Examples:
-
-  ```json
-  "my-session-token"
-  ```
-
-
-- **`aws_config_ini`**: Path to a config file for specifying more advanced S3 parameters. This should follow the format described here: https://boto3.amazonaws.com/v1/documentation/api/latest/guide/configuration.html#using-a-configuration-file. Default: `null`.
-
-  - **Any of**
-
-    - *string, format: path*
-
-    - *null*
-
-
-  Examples:
-
-  ```json
-  "~/.aws/config"
-  ```
-
-
-- **`service_name`** *(string)*: Default: `"interrogation_room"`.
+- **`service_name`** *(string)*: Default: `"irs"`.
 
 - **`service_instance_id`** *(string)*: A string that uniquely identifies this instance across all instances of this service. A globally unique Kafka client ID will be created by concatenating the service_name and the service_instance_id.
 
@@ -189,15 +131,15 @@ The service requires the following configuration parameters:
   ```
 
 
-- **`staging_bucket`** *(string)*: Bucket ID representing the staging area for re-encrypted files.
+- **`kafka_security_protocol`** *(string)*: Protocol used to communicate with brokers. Valid values are: PLAINTEXT, SSL. Must be one of: `["PLAINTEXT", "SSL"]`. Default: `"PLAINTEXT"`.
 
+- **`kafka_ssl_cafile`** *(string)*: Certificate Authority file path containing certificates used to sign broker certificates. If a CA not specified, the default system CA will be used if found by OpenSSL. Default: `""`.
 
-  Examples:
+- **`kafka_ssl_certfile`** *(string)*: Optional filename of client certificate, as well as any CA certificates needed to establish the certificate's authenticity. Default: `""`.
 
-  ```json
-  "staging"
-  ```
+- **`kafka_ssl_keyfile`** *(string)*: Optional filename containing the client private key. Default: `""`.
 
+- **`kafka_ssl_password`** *(string)*: Optional password to be used for the client private key. Default: `""`.
 
 - **`eks_url`** *(string)*: URL pointing to the Encryption Key Store service.
 

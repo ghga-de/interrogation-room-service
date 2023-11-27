@@ -14,9 +14,9 @@
 # limitations under the License.
 
 """Config Parameter Modeling and Parsing"""
+from ghga_service_commons.utils.multinode_storage import S3ObjectStoragesConfig
 from hexkit.config import config_from_yaml
 from hexkit.providers.akafka import KafkaConfig
-from hexkit.providers.s3 import S3Config
 from pydantic import Field
 
 from irs.adapters.inbound.event_sub import EventSubTanslatorConfig
@@ -24,15 +24,15 @@ from irs.adapters.outbound.event_pub import EventPubTanslatorConfig
 
 
 @config_from_yaml(prefix="irs")
-class Config(KafkaConfig, S3Config, EventSubTanslatorConfig, EventPubTanslatorConfig):
+class Config(
+    KafkaConfig,
+    S3ObjectStoragesConfig,
+    EventSubTanslatorConfig,
+    EventPubTanslatorConfig,
+):
     """Config parameters and their defaults."""
 
-    service_name: str = "interrogation_room"
-    staging_bucket: str = Field(
-        ...,
-        examples=["staging"],
-        description=("Bucket ID representing the staging area for re-encrypted files."),
-    )
+    service_name: str = "irs"
     eks_url: str = Field(
         ...,
         examples=["http://127.0.0.1/eks"],

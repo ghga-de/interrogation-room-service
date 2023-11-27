@@ -72,7 +72,7 @@ async def test_failure_event(
     """Test the whole pipeline from receiving an event to notifying about failure"""
 
     # explicit patching required for now
-    def eks_patch(
+    def ekss_patch(
         *, file_part: bytes, public_key: bytes, api_url: str
     ) -> tuple[bytes, bytes, str, int]:
         """Monkeypatch to emulate API Call"""
@@ -85,11 +85,7 @@ async def test_failure_event(
 
     monkeypatch.setattr(
         "irs.core.interrogator.call_eks_api",
-        eks_patch,
-    )
-    monkeypatch.setattr(
-        "irs.adapters.inbound.s3.get_objectstorage",
-        lambda: encrypted_random_data.s3_fixture.storage,
+        ekss_patch,
     )
 
     payload_in = incoming_payload(encrypted_random_data)
@@ -149,10 +145,6 @@ async def test_success_event(
     monkeypatch.setattr(
         "irs.core.interrogator.call_eks_api",
         eks_patch,
-    )
-    monkeypatch.setattr(
-        "irs.adapters.inbound.s3.get_objectstorage",
-        lambda: encrypted_random_data.s3_fixture.storage,
     )
 
     payload_in = incoming_payload(encrypted_random_data)

@@ -32,6 +32,7 @@ class InterrogatorPort(ABC):
         upload_date: str,
         decrypted_size: int,
         sha256_checksum: str,
+        s3_endpoint_alias: str,
     ):
         """
         Forwards first file part to encryption key store, retrieves file encryption

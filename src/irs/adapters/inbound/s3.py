@@ -15,13 +15,14 @@
 """Provides helpers for S3 interaction"""
 
 import math
+from abc import ABC, abstractmethod
 from collections.abc import AsyncGenerator, Sequence
+from dataclasses import dataclass
 
 import requests
-from hexkit.providers.s3.provider import S3Config, S3ObjectStorage
+from hexkit.providers.s3.provider import S3ObjectStorage
 
 from irs.adapters.http import exceptions
-from irs.config import CONFIG
 
 
 def calc_part_ranges(
@@ -47,87 +48,104 @@ def calc_part_ranges(
     return part_ranges
 
 
-async def get_download_url(*, object_id: str, bucket_id: str) -> str:
-    """Get object download URL from S3 inbox bucket"""
-    storage = get_objectstorage()
-    return await storage.get_object_download_url(
-        bucket_id=bucket_id, object_id=object_id
-    )
+@dataclass
+class S3StorageIDs:
+    """TODO"""
+
+    bucket_id: str
+    object_id: str
 
 
-async def get_object_size(*, object_id: str, bucket_id: str) -> int:
-    """Get object size from S3 metadata"""
-    storage = get_objectstorage()
-    return await storage.get_object_size(bucket_id=bucket_id, object_id=object_id)
+class ObjectStorageHandlerPort(ABC):
+    """TODO"""
+
+    @abstractmethod
+    async def init_staging(self) -> None:
+        """Start staging a re-encrypted file to staging area, returns an upload id"""
+
+    @abstractmethod
+    async def stage_part(self, *, data: bytes, part_number: int) -> None:
+        """Save a file part to the staging area"""
+
+    @abstractmethod
+    async def complete_staging(self, *, parts: int) -> None:
+        """Complete the staging of a re-encrypted file"""
+
+    @abstractmethod
+    async def retrieve_parts(self, *, offset: int = 0) -> AsyncGenerator[bytes, None]:
+        """Get all parts from inbox, starting with file content at offset"""
+
+    @abstractmethod
+    async def retrieve_part(self, *, url: str, start: int, stop: int) -> bytes:
+        """Get one part from inbox by range"""
 
 
-def get_objectstorage() -> S3ObjectStorage:
-    """Factoring this out makes it overridable by tests"""
-    config = S3Config(
-        s3_endpoint_url=CONFIG.s3_endpoint_url,
-        s3_access_key_id=CONFIG.s3_access_key_id,
-        s3_secret_access_key=CONFIG.s3_secret_access_key,
-    )
-    return S3ObjectStorage(config=config)
+class ObjectStorageHandler(ObjectStorageHandlerPort):
+    """TODO"""
 
+    def __init__(
+        self,
+        object_storage: S3ObjectStorage,
+        inbox_ids: S3StorageIDs,
+        staging_ids: S3StorageIDs,
+        part_size: int,
+    ) -> None:
+        self._object_storage = object_storage
+        self._part_size = part_size
+        self._inbox = inbox_ids
+        self._staging = staging_ids
+        self._upload_id = ""
 
-async def retrieve_parts(
-    *, url: str, object_size: int, part_size: int, offset: int = 0
-) -> AsyncGenerator[bytes, None]:
-    """Get all parts from inbox, starting with file content at offset"""
-    for start, stop in calc_part_ranges(
-        part_size=part_size, object_size=object_size, byte_offset=offset
-    ):
-        yield await retrieve_part(url=url, start=start, stop=stop)
-
-
-async def retrieve_part(*, url: str, start: int, stop: int) -> bytes:
-    """Get one part from inbox by range"""
-    try:
-        response = requests.get(
-            url=url, headers={"Range": f"bytes={start}-{stop}"}, timeout=60
+    async def init_staging(self) -> None:
+        """Start staging a re-encrypted file to staging area, returns an upload id"""
+        self._upload_id = await self._object_storage.init_multipart_upload(
+            bucket_id=self._staging.bucket_id, object_id=self._staging.object_id
         )
-    except requests.exceptions.RequestException as request_error:
-        raise exceptions.RequestFailedError(url=url) from request_error
 
-    return response.content
+    async def stage_part(self, *, data: bytes, part_number: int) -> None:
+        """Save a file part to the staging area"""
+        url = await self._object_storage.get_part_upload_url(
+            upload_id=self._upload_id,
+            bucket_id=self._staging.bucket_id,
+            object_id=self._staging.object_id,
+            part_number=part_number,
+        )
 
+        try:
+            requests.put(url=url, data=data, timeout=60)
+        except requests.exceptions.RequestException as request_error:
+            raise exceptions.RequestFailedError(url=url) from request_error
 
-async def init_staging(*, object_id: str) -> str:
-    """Start staging a re-encrypted file to staging area, returns an upload id"""
-    storage = get_objectstorage()
-    return await storage.init_multipart_upload(
-        bucket_id=CONFIG.staging_bucket, object_id=object_id
-    )
+    async def complete_staging(self, *, parts: int) -> None:
+        """Complete the staging of a re-encrypted file"""
+        await self._object_storage.complete_multipart_upload(
+            upload_id=self._upload_id,
+            bucket_id=self._staging.bucket_id,
+            object_id=self._staging.object_id,
+            anticipated_part_quantity=parts,
+            anticipated_part_size=self._part_size,
+        )
 
+    async def retrieve_parts(self, *, offset: int = 0) -> AsyncGenerator[bytes, None]:
+        """Get all parts from inbox, starting with file content at offset"""
+        download_url = await self._object_storage.get_object_download_url(
+            bucket_id=self._inbox.bucket_id, object_id=self._inbox.object_id
+        )
+        object_size = await self._object_storage.get_object_size(
+            bucket_id=self._inbox.bucket_id, object_id=self._inbox.object_id
+        )
+        for start, stop in calc_part_ranges(
+            part_size=self._part_size, object_size=object_size, byte_offset=offset
+        ):
+            yield await self.retrieve_part(url=download_url, start=start, stop=stop)
 
-async def stage_part(
-    *, upload_id: str, object_id: str, data: bytes, part_number: int
-) -> None:
-    """Save a file part to the staging area"""
-    storage = get_objectstorage()
-    url = await storage.get_part_upload_url(
-        upload_id=upload_id,
-        bucket_id=CONFIG.staging_bucket,
-        object_id=object_id,
-        part_number=part_number,
-    )
+    async def retrieve_part(self, *, url: str, start: int, stop: int) -> bytes:
+        """Get one part from inbox by range"""
+        try:
+            response = requests.get(
+                url=url, headers={"Range": f"bytes={start}-{stop}"}, timeout=60
+            )
+        except requests.exceptions.RequestException as request_error:
+            raise exceptions.RequestFailedError(url=url) from request_error
 
-    try:
-        requests.put(url=url, data=data, timeout=60)
-    except requests.exceptions.RequestException as request_error:
-        raise exceptions.RequestFailedError(url=url) from request_error
-
-
-async def complete_staging(
-    *, upload_id: str, object_id: str, part_size: int, parts: int
-) -> None:
-    """Complete the staging of a re-encrypted file"""
-    storage = get_objectstorage()
-    await storage.complete_multipart_upload(
-        upload_id=upload_id,
-        bucket_id=CONFIG.staging_bucket,
-        object_id=object_id,
-        anticipated_part_quantity=parts,
-        anticipated_part_size=part_size,
-    )
+        return response.content

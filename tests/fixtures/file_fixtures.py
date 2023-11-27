@@ -20,6 +20,7 @@ import tempfile
 from collections.abc import AsyncGenerator
 from dataclasses import dataclass
 from datetime import datetime
+from pathlib import Path
 
 import crypt4gh.header
 import crypt4gh.lib
@@ -89,7 +90,7 @@ async def encrypted_random_data(
             # Rewind file
             encrypted_file.seek(0)
             obj = FileObject(
-                file_path=encrypted_file.name,
+                file_path=Path(encrypted_file.name),
                 bucket_id=INBOX_BUCKET_ID,
                 object_id=OBJECT_ID,
             )

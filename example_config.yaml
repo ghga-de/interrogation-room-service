@@ -1,16 +1,24 @@
-aws_config_ini: null
 eks_url: http://127.0.0.1/eks
 interrogation_failure_type: file_validation_failure
 interrogation_success_type: file_validation_success
 interrogation_topic: file_interrogation
+kafka_security_protocol: PLAINTEXT
 kafka_servers:
 - kafka:9092
-s3_access_key_id: test
-s3_endpoint_url: http://localstack:4566
-s3_secret_access_key: '**********'
-s3_session_token: null
+kafka_ssl_cafile: ''
+kafka_ssl_certfile: ''
+kafka_ssl_keyfile: ''
+kafka_ssl_password: ''
+object_storages:
+  test:
+    bucket: staging
+    credentials:
+      aws_config_ini: null
+      s3_access_key_id: test
+      s3_endpoint_url: http://irs:4566
+      s3_secret_access_key: '**********'
+      s3_session_token: null
 service_instance_id: interrogation_room-001
-service_name: interrogation_room
-staging_bucket: test-staging
+service_name: irs
 upload_received_event_topic: file_uploads
 upload_received_event_type: file_upload_received
