@@ -24,15 +24,15 @@ from hexkit.providers.s3.testutils import s3_fixture  # noqa: F401
 from hexkit.utils import calc_part_size
 
 from tests.fixtures.config import Config
-from tests.fixtures.file_fixtures import (
+from tests.fixtures.joint import (
     FILE_ID,
     INBOX_BUCKET_ID,
     OBJECT_ID,
     STAGING_BUCKET_ID,
-    EncryptedDataFixture,
-    encrypted_random_data,  # noqa: F401
+    EncryptedData,
+    JointFixture,
+    joint_fixture,  # noqa: F401
 )
-from tests.fixtures.joint import JointFixture, joint_fixture  # noqa: F401
 from tests.fixtures.keypair_fixtures import generate_keypair_fixture  # noqa: F401
 
 EKSS_NEW_SECRET = os.urandom(32)
@@ -49,7 +49,7 @@ def incoming_irs_event(
     return event
 
 
-def incoming_payload(data: EncryptedDataFixture) -> dict[str, Any]:
+def incoming_payload(data: EncryptedData) -> dict[str, Any]:
     """Payload arriving at the interrogation room"""
     return {
         "s3_endpoint_alias": "test",
@@ -66,7 +66,6 @@ def incoming_payload(data: EncryptedDataFixture) -> dict[str, Any]:
 @pytest.mark.asyncio
 async def test_failure_event(
     monkeypatch,
-    encrypted_random_data: EncryptedDataFixture,  # noqa: F811
     joint_fixture: JointFixture,  # noqa: F811
 ):
     """Test the whole pipeline from receiving an event to notifying about failure"""
@@ -77,10 +76,10 @@ async def test_failure_event(
     ) -> tuple[bytes, bytes, str, int]:
         """Monkeypatch to emulate API Call"""
         return (
-            encrypted_random_data.file_secret,
+            joint_fixture.encrypted_data.file_secret,
             EKSS_NEW_SECRET,
             "secret_id",
-            encrypted_random_data.offset,
+            joint_fixture.encrypted_data.offset,
         )
 
     monkeypatch.setattr(
@@ -88,7 +87,7 @@ async def test_failure_event(
         ekss_patch,
     )
 
-    payload_in = incoming_payload(encrypted_random_data)
+    payload_in = incoming_payload(joint_fixture.encrypted_data)
     # introduce invalid checksum
     payload_in["expected_decrypted_sha256"] = payload_in["expected_decrypted_sha256"][
         1:
@@ -100,7 +99,7 @@ async def test_failure_event(
         "file_id": FILE_ID,
         "bucket_id": STAGING_BUCKET_ID,
         "reason": "Checksum mismatch",
-        "upload_date": encrypted_random_data.upload_date,
+        "upload_date": joint_fixture.encrypted_data.upload_date,
     }
     expected_event_out = ExpectedEvent(
         payload=payload_out,
@@ -125,7 +124,6 @@ async def test_failure_event(
 @pytest.mark.asyncio
 async def test_success_event(
     monkeypatch,
-    encrypted_random_data: EncryptedDataFixture,  # noqa: F811
     joint_fixture: JointFixture,  # noqa: F811
 ):
     """Test the whole pipeline from receiving an event to notifying about success"""
@@ -136,10 +134,10 @@ async def test_success_event(
     ) -> tuple[bytes, bytes, str, int]:
         """Monkeypatch to emulate API Call"""
         return (
-            encrypted_random_data.file_secret,
+            joint_fixture.encrypted_data.file_secret,
             EKSS_NEW_SECRET,
             "secret_id",
-            encrypted_random_data.offset,
+            joint_fixture.encrypted_data.offset,
         )
 
     monkeypatch.setattr(
@@ -147,21 +145,21 @@ async def test_success_event(
         eks_patch,
     )
 
-    payload_in = incoming_payload(encrypted_random_data)
+    payload_in = incoming_payload(joint_fixture.encrypted_data)
     event_in = incoming_irs_event(payload=payload_in, config=joint_fixture.config)
 
-    part_size = calc_part_size(file_size=encrypted_random_data.file_size)
+    part_size = calc_part_size(file_size=joint_fixture.encrypted_data.file_size)
 
     payload_out = {
         "s3_endpoint_alias": "test",
         "file_id": FILE_ID,
         "object_id": OBJECT_ID,
         "bucket_id": STAGING_BUCKET_ID,
-        "upload_date": encrypted_random_data.upload_date,
+        "upload_date": joint_fixture.encrypted_data.upload_date,
         "decryption_secret_id": "secret_id",
-        "content_offset": encrypted_random_data.offset,
+        "content_offset": joint_fixture.encrypted_data.offset,
         "encrypted_part_size": part_size,
-        "decrypted_sha256": encrypted_random_data.checksum,
+        "decrypted_sha256": joint_fixture.encrypted_data.checksum,
     }
     expected_event_out = ExpectedEvent(
         payload=payload_out,

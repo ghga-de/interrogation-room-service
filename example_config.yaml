@@ -1,4 +1,4 @@
-eks_url: http://127.0.0.1/eks
+ekss_base_url: http://ekss:8080/
 interrogation_failure_type: file_validation_failure
 interrogation_success_type: file_validation_success
 interrogation_topic: file_interrogation
@@ -18,7 +18,7 @@ object_storages:
       s3_endpoint_url: http://irs:4566
       s3_secret_access_key: '**********'
       s3_session_token: null
-service_instance_id: interrogation_room-001
+service_instance_id: '001'
 service_name: irs
 upload_received_event_topic: file_uploads
 upload_received_event_type: file_upload_received

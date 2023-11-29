@@ -204,12 +204,12 @@
       "title": "Kafka Ssl Password",
       "type": "string"
     },
-    "eks_url": {
+    "ekss_base_url": {
       "description": "URL pointing to the Encryption Key Store service.",
       "examples": [
-        "http://127.0.0.1/eks"
+        "http://ekss:8080"
       ],
-      "title": "Eks Url",
+      "title": "Ekss Base Url",
       "type": "string"
     }
   },
@@ -222,7 +222,7 @@
     "object_storages",
     "service_instance_id",
     "kafka_servers",
-    "eks_url"
+    "ekss_base_url"
   ],
   "title": "ModSettings",
   "type": "object"

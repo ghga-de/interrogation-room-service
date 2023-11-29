@@ -33,9 +33,9 @@ class Config(
     """Config parameters and their defaults."""
 
     service_name: str = "irs"
-    eks_url: str = Field(
+    ekss_base_url: str = Field(
         ...,
-        examples=["http://127.0.0.1/eks"],
+        examples=["http://ekss:8080"],
         description=("URL pointing to the Encryption Key Store service."),
     )
 

@@ -141,13 +141,13 @@ The service requires the following configuration parameters:
 
 - **`kafka_ssl_password`** *(string)*: Optional password to be used for the client private key. Default: `""`.
 
-- **`eks_url`** *(string)*: URL pointing to the Encryption Key Store service.
+- **`ekss_base_url`** *(string)*: URL pointing to the Encryption Key Store service.
 
 
   Examples:
 
   ```json
-  "http://127.0.0.1/eks"
+  "http://ekss:8080"
   ```
 
 
