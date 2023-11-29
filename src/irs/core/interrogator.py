@@ -264,7 +264,7 @@ class Interrogator(InterrogatorPort):
                 url=download_url, start=0, stop=part_size - 1
             )
             submitter_secret, new_secret, secret_id, offset = call_eks_api(
-                file_part=part, public_key=public_key, api_url=CONFIG.eks_url
+                file_part=part, public_key=public_key, api_url=CONFIG.ekss_base_url
             )
 
             cipher_segment_processor = CipherSegmentProcessor(

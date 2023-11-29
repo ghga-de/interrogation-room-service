@@ -17,6 +17,7 @@
 """Provides multiple fixtures in one spot"""
 
 import hashlib
+import sys
 import tempfile
 from collections.abc import AsyncGenerator
 from dataclasses import dataclass
@@ -103,6 +104,7 @@ async def joint_fixture(
     async with prepare_core(config=config) as interrogator, prepare_event_subscriber(
         config=config, interrogator_override=interrogator
     ) as event_subscriber:
+        sys.set_int_max_str_digits(FILE_SIZE)
         with big_temp_file(FILE_SIZE) as data:
             # rewind data pointer
             data.seek(0)
