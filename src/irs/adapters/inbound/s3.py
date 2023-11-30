@@ -49,15 +49,15 @@ def calc_part_ranges(
 
 
 @dataclass
-class S3StorageIDs:
-    """TODO"""
+class S3IDs:
+    """Container for bucket and object ID"""
 
     bucket_id: str
     object_id: str
 
 
-class ObjectStorageHandlerPort(ABC):
-    """TODO"""
+class StagingHandlerPort(ABC):
+    """Abstract base for object storage functionality dealing with staging."""
 
     @abstractmethod
     async def init_staging(self) -> None:
@@ -80,14 +80,14 @@ class ObjectStorageHandlerPort(ABC):
         """Get one part from inbox by range"""
 
 
-class ObjectStorageHandler(ObjectStorageHandlerPort):
-    """TODO"""
+class StagingHandler(StagingHandlerPort):
+    """Wrapper for object storage staging functionality."""
 
     def __init__(
         self,
         object_storage: S3ObjectStorage,
-        inbox_ids: S3StorageIDs,
-        staging_ids: S3StorageIDs,
+        inbox_ids: S3IDs,
+        staging_ids: S3IDs,
         part_size: int,
     ) -> None:
         self._object_storage = object_storage
@@ -126,7 +126,7 @@ class ObjectStorageHandler(ObjectStorageHandlerPort):
             anticipated_part_size=self._part_size,
         )
 
-    async def retrieve_parts(self, *, offset: int = 0) -> AsyncGenerator[bytes, None]:
+    async def retrieve_parts(self, *, offset: int = 0) -> AsyncGenerator[bytes, None]:  # type: ignore
         """Get all parts from inbox, starting with file content at offset"""
         download_url = await self._object_storage.get_object_download_url(
             bucket_id=self._inbox.bucket_id, object_id=self._inbox.object_id

@@ -26,7 +26,7 @@ from nacl.bindings import crypto_aead_chacha20poly1305_ietf_encrypt
 
 from irs.adapters.http.api_calls import call_eks_api
 from irs.adapters.http.exceptions import KnownError
-from irs.adapters.inbound.s3 import ObjectStorageHandler, S3StorageIDs
+from irs.adapters.inbound.s3 import S3IDs, StagingHandler
 from irs.config import CONFIG
 from irs.core.exceptions import LastSegmentCorruptedError, SegmentCorruptedError
 from irs.ports.inbound.interrogator import InterrogatorPort
@@ -43,7 +43,7 @@ class CipherSegmentProcessor:
         new_secret: bytes,
         part_size: int,
         offset: int,
-        object_storage_handler: ObjectStorageHandler,
+        object_storage_handler: StagingHandler,
     ) -> None:
         self.object_storage_handler = object_storage_handler
         self.secret = secret
@@ -236,8 +236,9 @@ class Interrogator(InterrogatorPort):
                 s3_endpoint_alias
             )
         except KeyError as error:
-            # TODO: handle error
-            raise NotImplementedError() from error
+            raise ValueError(
+                f"S3 endpoint alias not configured: {s3_endpoint_alias}"
+            ) from error
 
         object_size = await object_storage.get_object_size(
             object_id=source_object_id, bucket_id=source_bucket_id
@@ -246,10 +247,10 @@ class Interrogator(InterrogatorPort):
 
         # generate ID for the staging bucket file
         object_id = str(uuid.uuid4())
-        staging_ids = S3StorageIDs(bucket_id=staging_bucket_id, object_id=object_id)
-        inbox_ids = S3StorageIDs(bucket_id=source_bucket_id, object_id=source_object_id)
+        staging_ids = S3IDs(bucket_id=staging_bucket_id, object_id=object_id)
+        inbox_ids = S3IDs(bucket_id=source_bucket_id, object_id=source_object_id)
 
-        object_storage_handler = ObjectStorageHandler(
+        object_storage_handler = StagingHandler(
             object_storage=object_storage,
             inbox_ids=inbox_ids,
             staging_ids=staging_ids,
