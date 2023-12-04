@@ -24,7 +24,7 @@ classifiers = [
 ]
 dependencies = [
     "ghga-service-commons[api]>=1.2.0",
-    "ghga-event-schemas==1.0.0",
+    "ghga-event-schemas>=3.0.0,<4",
     "crypt4gh>=1.6",
     "hexkit[akafka,s3]>=1.0.0",
 ]

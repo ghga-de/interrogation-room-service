@@ -26,9 +26,9 @@ from nacl.bindings import crypto_aead_chacha20poly1305_ietf_encrypt
 
 from irs.adapters.http.api_calls import call_eks_api
 from irs.adapters.http.exceptions import KnownError
-from irs.adapters.inbound.s3 import S3IDs, StagingHandler
 from irs.config import CONFIG
 from irs.core.exceptions import LastSegmentCorruptedError, SegmentCorruptedError
+from irs.core.s3 import S3Ids, StagingHandler
 from irs.ports.inbound.interrogator import InterrogatorPort
 from irs.ports.outbound.event_pub import EventPublisherPort
 
@@ -247,8 +247,8 @@ class Interrogator(InterrogatorPort):
 
         # generate ID for the staging bucket file
         object_id = str(uuid.uuid4())
-        staging_ids = S3IDs(bucket_id=staging_bucket_id, object_id=object_id)
-        inbox_ids = S3IDs(bucket_id=source_bucket_id, object_id=source_object_id)
+        staging_ids = S3Ids(bucket_id=staging_bucket_id, object_id=object_id)
+        inbox_ids = S3Ids(bucket_id=source_bucket_id, object_id=source_object_id)
 
         object_storage_handler = StagingHandler(
             object_storage=object_storage,

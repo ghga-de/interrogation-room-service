@@ -15,9 +15,9 @@
 """Provides helpers for S3 interaction"""
 
 import math
-from abc import ABC, abstractmethod
 from collections.abc import AsyncGenerator, Sequence
 from dataclasses import dataclass
+from typing import Optional
 
 import requests
 from hexkit.providers.s3.provider import S3ObjectStorage
@@ -49,52 +49,31 @@ def calc_part_ranges(
 
 
 @dataclass
-class S3IDs:
+class S3Ids:
     """Container for bucket and object ID"""
 
     bucket_id: str
     object_id: str
 
 
-class StagingHandlerPort(ABC):
-    """Abstract base for object storage functionality dealing with staging."""
-
-    @abstractmethod
-    async def init_staging(self) -> None:
-        """Start staging a re-encrypted file to staging area, returns an upload id"""
-
-    @abstractmethod
-    async def stage_part(self, *, data: bytes, part_number: int) -> None:
-        """Save a file part to the staging area"""
-
-    @abstractmethod
-    async def complete_staging(self, *, parts: int) -> None:
-        """Complete the staging of a re-encrypted file"""
-
-    @abstractmethod
-    async def retrieve_parts(self, *, offset: int = 0) -> AsyncGenerator[bytes, None]:
-        """Get all parts from inbox, starting with file content at offset"""
-
-    @abstractmethod
-    async def retrieve_part(self, *, url: str, start: int, stop: int) -> bytes:
-        """Get one part from inbox by range"""
-
-
-class StagingHandler(StagingHandlerPort):
+class StagingHandler:
     """Wrapper for object storage staging functionality."""
+
+    class UploadNotInitializedError(RuntimeError):
+        """Raised when the upload ID is not set for a method that needs it."""
 
     def __init__(
         self,
         object_storage: S3ObjectStorage,
-        inbox_ids: S3IDs,
-        staging_ids: S3IDs,
+        inbox_ids: S3Ids,
+        staging_ids: S3Ids,
         part_size: int,
     ) -> None:
         self._object_storage = object_storage
         self._part_size = part_size
         self._inbox = inbox_ids
         self._staging = staging_ids
-        self._upload_id = ""
+        self._upload_id: Optional[str] = None
 
     async def init_staging(self) -> None:
         """Start staging a re-encrypted file to staging area, returns an upload id"""
@@ -104,6 +83,9 @@ class StagingHandler(StagingHandlerPort):
 
     async def stage_part(self, *, data: bytes, part_number: int) -> None:
         """Save a file part to the staging area"""
+        if not self._upload_id:
+            raise self.UploadNotInitializedError()
+
         url = await self._object_storage.get_part_upload_url(
             upload_id=self._upload_id,
             bucket_id=self._staging.bucket_id,
@@ -118,6 +100,9 @@ class StagingHandler(StagingHandlerPort):
 
     async def complete_staging(self, *, parts: int) -> None:
         """Complete the staging of a re-encrypted file"""
+        if not self._upload_id:
+            raise self.UploadNotInitializedError()
+
         await self._object_storage.complete_multipart_upload(
             upload_id=self._upload_id,
             bucket_id=self._staging.bucket_id,
@@ -126,7 +111,7 @@ class StagingHandler(StagingHandlerPort):
             anticipated_part_size=self._part_size,
         )
 
-    async def retrieve_parts(self, *, offset: int = 0) -> AsyncGenerator[bytes, None]:  # type: ignore
+    async def retrieve_parts(self, *, offset: int = 0) -> AsyncGenerator[bytes, None]:
         """Get all parts from inbox, starting with file content at offset"""
         download_url = await self._object_storage.get_object_download_url(
             bucket_id=self._inbox.bucket_id, object_id=self._inbox.object_id
