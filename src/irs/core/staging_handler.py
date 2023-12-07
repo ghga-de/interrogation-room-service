@@ -20,7 +20,7 @@ from dataclasses import dataclass
 from typing import Optional
 
 import requests
-from hexkit.providers.s3.provider import S3ObjectStorage
+from hexkit.protocols.objstorage import ObjectStorageProtocol
 
 from irs.adapters.http import exceptions
 
@@ -49,7 +49,7 @@ def calc_part_ranges(
 
 
 @dataclass
-class S3Ids:
+class StorageIds:
     """Container for bucket and object ID"""
 
     bucket_id: str
@@ -64,9 +64,9 @@ class StagingHandler:
 
     def __init__(
         self,
-        object_storage: S3ObjectStorage,
-        inbox_ids: S3Ids,
-        staging_ids: S3Ids,
+        object_storage: ObjectStorageProtocol,
+        inbox_ids: StorageIds,
+        staging_ids: StorageIds,
         part_size: int,
     ) -> None:
         self._object_storage = object_storage
