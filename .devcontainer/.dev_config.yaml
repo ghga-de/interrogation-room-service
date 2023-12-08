@@ -1,13 +1,17 @@
 # Please only mention the non-default settings here:
+ekss_base_url: http://ekss:8080/
+kafka_servers: ["kafka:9092"]
+service_instance_id: "001"
 
-staging_bucket: test-staging
-eks_url: http://127.0.0.1/eks
-kafka_servers:
-  - kafka:9092
-service_instance_id: interrogation_room-001
-s3_endpoint_url: "http://localstack:4566"
-s3_access_key_id: test
-s3_secret_access_key: test
+
+object_storages:
+  test:
+    bucket: staging
+    credentials:
+      s3_endpoint_url: http://irs:4566
+      s3_access_key_id: test
+      s3_secret_access_key: test
+
 interrogation_topic: file_interrogation
 interrogation_success_type: file_validation_success
 interrogation_failure_type: file_validation_failure

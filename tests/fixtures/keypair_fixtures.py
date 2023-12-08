@@ -29,12 +29,12 @@ from crypt4gh.keys.c4gh import generate as generate_keypair
 class KeypairFixture:
     """Fixture containing a keypair"""
 
-    public_key: bytes
-    private_key: bytes
+    public: bytes
+    private: bytes
 
 
 @pytest_asyncio.fixture
-async def generate_keypair_fixture() -> AsyncGenerator[KeypairFixture, None]:
+async def keypair_fixture() -> AsyncGenerator[KeypairFixture, None]:
     """Creates a keypair using crypt4gh"""
     # Crypt4GH always writes to file and tmp_path fixture causes permission issues
 
@@ -50,4 +50,4 @@ async def generate_keypair_fixture() -> AsyncGenerator[KeypairFixture, None]:
 
     Path(pk_path).unlink()
     Path(sk_path).unlink()
-    yield KeypairFixture(public_key=public_key, private_key=private_key)
+    yield KeypairFixture(public=public_key, private=private_key)

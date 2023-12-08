@@ -14,181 +14,259 @@
 # limitations under the License.
 """Tests for event handling"""
 import base64
+import hashlib
 import os
-from collections.abc import Collection, Mapping
-from typing import Any
+import sys
+import tempfile
+from collections.abc import Mapping
+from dataclasses import dataclass
+from functools import partial
+from pathlib import Path
 
+import crypt4gh.header
+import crypt4gh.lib
 import pytest
+from ghga_service_commons.utils.temp_files import big_temp_file
+from ghga_service_commons.utils.utc_dates import now_as_utc
 from hexkit.providers.akafka.testutils import ExpectedEvent, kafka_fixture  # noqa: F401
-from hexkit.providers.s3.testutils import s3_fixture  # noqa: F401
+from hexkit.providers.s3.testutils import FileObject
 from hexkit.utils import calc_part_size
 
 from tests.fixtures.config import Config
-from tests.fixtures.file_fixtures import (
-    FILE_ID,
+from tests.fixtures.joint import (
+    FILE_SIZE,
     INBOX_BUCKET_ID,
-    OBJECT_ID,
     STAGING_BUCKET_ID,
-    EncryptedDataFixture,
-    encrypted_random_data,  # noqa: F401
+    JointFixture,
+    S3Fixture,
+    joint_fixture,  # noqa: F401
+    keypair_fixture,  # noqa: F401
+    s3_fixture,  # noqa: F401
+    second_s3_fixture,  # noqa: F401
 )
-from tests.fixtures.joint import JointFixture, joint_fixture  # noqa: F401
-from tests.fixtures.keypair_fixtures import generate_keypair_fixture  # noqa: F401
 
 EKSS_NEW_SECRET = os.urandom(32)
 
 
+@dataclass
+class EncryptedData:
+    """Object metadata for testing purposes"""
+
+    checksum: str
+    file_id: str
+    file_object: FileObject
+    file_secret: bytes
+    file_size: int
+    upload_date: str
+    offset: int
+
+
+async def create_test_file(private_key: bytes, public_key: bytes, s3: S3Fixture):
+    """Generate encrypted random test data using a specified keypair"""
+    sys.set_int_max_str_digits(FILE_SIZE)
+    with big_temp_file(FILE_SIZE) as data:
+        # rewind data pointer
+        data.seek(0)
+        with tempfile.NamedTemporaryFile() as encrypted_file:
+            upload_date = now_as_utc().isoformat()
+            enc_keys = [(0, private_key, public_key)]
+
+            crypt4gh.lib.encrypt(keys=enc_keys, infile=data, outfile=encrypted_file)
+
+            # get unencrypted checksum
+            data.seek(0)
+            checksum = hashlib.sha256(data.read()).hexdigest()
+
+            encrypted_file.seek(0)
+            dec_keys = [(0, private_key, None)]
+            session_keys, _ = crypt4gh.header.deconstruct(
+                infile=encrypted_file, keys=dec_keys, sender_pubkey=public_key
+            )
+            file_secret = session_keys[0]
+
+            offset = encrypted_file.tell()
+            # Rewind file
+            encrypted_file.seek(0)
+            object_id = os.urandom(16).hex()
+            file_id = f"F{object_id}"
+            file_object = FileObject(
+                file_path=Path(encrypted_file.name),
+                bucket_id=INBOX_BUCKET_ID,
+                object_id=object_id,
+            )
+            await s3.populate_file_objects([file_object])
+
+            return EncryptedData(
+                checksum=checksum,
+                file_id=file_id,
+                file_object=file_object,
+                file_secret=file_secret,
+                file_size=len(file_object.content),
+                offset=offset,
+                upload_date=upload_date,
+            )
+
+
 def incoming_irs_event(
     payload: dict[str, object], config: Config
-) -> Mapping[str, Collection[str]]:
+) -> Mapping[str, object]:
     """Emulate incoming event from ucs"""
     type_ = config.upload_received_event_type
-    key = FILE_ID
+    key = payload["file_id"]
     topic = config.upload_received_event_topic
     event = {"payload": payload, "type_": type_, "key": key, "topic": topic}
     return event
 
 
-def incoming_payload(data: EncryptedDataFixture) -> dict[str, Any]:
-    """Payload arriving at the interrogation room"""
-    return {
-        "s3_endpoint_alias": "test",
-        "file_id": FILE_ID,
-        "object_id": OBJECT_ID,
-        "bucket_id": INBOX_BUCKET_ID,
-        "submitter_public_key": base64.b64encode(data.public_key).decode("utf-8"),
-        "upload_date": data.upload_date,
-        "expected_decrypted_sha256": data.checksum,
-        "decrypted_size": data.file_size,
-    }
+def ekss_call(
+    *, data: EncryptedData, file_part: bytes, public_key: bytes, api_url: str
+) -> tuple[bytes, bytes, str, int]:
+    """Monkeypatch to emulate API Call"""
+    return (
+        data.file_secret,
+        EKSS_NEW_SECRET,
+        "secret_id",
+        data.offset,
+    )
 
 
 @pytest.mark.asyncio
 async def test_failure_event(
     monkeypatch,
-    encrypted_random_data: EncryptedDataFixture,  # noqa: F811
     joint_fixture: JointFixture,  # noqa: F811
 ):
     """Test the whole pipeline from receiving an event to notifying about failure"""
+    for s3, endpoint_alias in (
+        (joint_fixture.s3, joint_fixture.endpoint_aliases.node1),
+        (joint_fixture.second_s3, joint_fixture.endpoint_aliases.node2),
+    ):
+        data = await create_test_file(
+            private_key=joint_fixture.keypair.private,
+            public_key=joint_fixture.keypair.public,
+            s3=s3,
+        )
+        ekss_patch = partial(ekss_call, data=data)
 
-    # explicit patching required for now
-    def eks_patch(
-        *, file_part: bytes, public_key: bytes, api_url: str
-    ) -> tuple[bytes, bytes, str, int]:
-        """Monkeypatch to emulate API Call"""
-        return (
-            encrypted_random_data.file_secret,
-            EKSS_NEW_SECRET,
-            "secret_id",
-            encrypted_random_data.offset,
+        monkeypatch.setattr(
+            "irs.core.interrogator.call_eks_api",
+            ekss_patch,
         )
 
-    monkeypatch.setattr(
-        "irs.core.interrogator.call_eks_api",
-        eks_patch,
-    )
-    monkeypatch.setattr(
-        "irs.adapters.inbound.s3.get_objectstorage",
-        lambda: encrypted_random_data.s3_fixture.storage,
-    )
+        payload_in = {
+            "s3_endpoint_alias": endpoint_alias,
+            "file_id": data.file_id,
+            "object_id": data.file_object.object_id,
+            "bucket_id": INBOX_BUCKET_ID,
+            "submitter_public_key": base64.b64encode(
+                joint_fixture.keypair.public
+            ).decode("utf-8"),
+            "upload_date": data.upload_date,
+            "expected_decrypted_sha256": data.checksum,
+            "decrypted_size": data.file_size,
+        }
+        # introduce invalid checksum
+        payload_in["expected_decrypted_sha256"] = payload_in[
+            "expected_decrypted_sha256"
+        ][1:]
+        event_in = incoming_irs_event(payload=payload_in, config=joint_fixture.config)
 
-    payload_in = incoming_payload(encrypted_random_data)
-    # introduce invalid checksum
-    payload_in["expected_decrypted_sha256"] = payload_in["expected_decrypted_sha256"][
-        1:
-    ]
-    event_in = incoming_irs_event(payload=payload_in, config=joint_fixture.config)
+        payload_out = {
+            "s3_endpoint_alias": endpoint_alias,
+            "file_id": data.file_id,
+            "bucket_id": STAGING_BUCKET_ID,
+            "reason": "Checksum mismatch",
+            "upload_date": data.upload_date,
+        }
+        expected_event_out = ExpectedEvent(
+            payload=payload_out,
+            type_=joint_fixture.config.interrogation_failure_type,
+            key=data.file_id,
+        )
 
-    payload_out = {
-        "s3_endpoint_alias": "test",
-        "file_id": FILE_ID,
-        "bucket_id": STAGING_BUCKET_ID,
-        "reason": "Checksum mismatch",
-        "upload_date": encrypted_random_data.upload_date,
-    }
-    expected_event_out = ExpectedEvent(
-        payload=payload_out,
-        type_=joint_fixture.config.interrogation_failure_type,
-        key=FILE_ID,
-    )
+        async with joint_fixture.kafka.record_events(
+            in_topic=joint_fixture.config.interrogation_topic,
+        ) as event_recorder:
+            await joint_fixture.kafka.publish_event(**event_in)
+            await joint_fixture.event_subscriber.run(forever=False)
 
-    async with joint_fixture.kafka.record_events(
-        in_topic=joint_fixture.config.interrogation_topic,
-    ) as event_recorder:
-        await joint_fixture.kafka.publish_event(**event_in)
-        await joint_fixture.event_subscriber.run(forever=False)
+        recorded_events = event_recorder.recorded_events
 
-    recorded_events = event_recorder.recorded_events
-
-    assert len(recorded_events) == 1
-    assert recorded_events[0].payload["object_id"] != ""
-    expected_event_out.payload["object_id"] = recorded_events[0].payload["object_id"]
-    assert recorded_events[0].payload == expected_event_out.payload
+        assert len(recorded_events) == 1
+        assert recorded_events[0].payload["object_id"] != ""
+        expected_event_out.payload["object_id"] = recorded_events[0].payload[
+            "object_id"
+        ]
+        assert recorded_events[0].payload == expected_event_out.payload
 
 
 @pytest.mark.asyncio
 async def test_success_event(
     monkeypatch,
-    encrypted_random_data: EncryptedDataFixture,  # noqa: F811
     joint_fixture: JointFixture,  # noqa: F811
 ):
     """Test the whole pipeline from receiving an event to notifying about success"""
-
-    # explicit patching required for now
-    def eks_patch(
-        *, file_part: bytes, public_key: bytes, api_url: str
-    ) -> tuple[bytes, bytes, str, int]:
-        """Monkeypatch to emulate API Call"""
-        return (
-            encrypted_random_data.file_secret,
-            EKSS_NEW_SECRET,
-            "secret_id",
-            encrypted_random_data.offset,
+    for s3, endpoint_alias in (
+        (joint_fixture.s3, joint_fixture.endpoint_aliases.node1),
+        (joint_fixture.second_s3, joint_fixture.endpoint_aliases.node2),
+    ):
+        data = await create_test_file(
+            private_key=joint_fixture.keypair.private,
+            public_key=joint_fixture.keypair.public,
+            s3=s3,
         )
 
-    monkeypatch.setattr(
-        "irs.core.interrogator.call_eks_api",
-        eks_patch,
-    )
-    monkeypatch.setattr(
-        "irs.adapters.inbound.s3.get_objectstorage",
-        lambda: encrypted_random_data.s3_fixture.storage,
-    )
+        ekss_patch = partial(ekss_call, data=data)
 
-    payload_in = incoming_payload(encrypted_random_data)
-    event_in = incoming_irs_event(payload=payload_in, config=joint_fixture.config)
+        monkeypatch.setattr(
+            "irs.core.interrogator.call_eks_api",
+            ekss_patch,
+        )
 
-    part_size = calc_part_size(file_size=encrypted_random_data.file_size)
+        payload_in = {
+            "s3_endpoint_alias": endpoint_alias,
+            "file_id": data.file_id,
+            "object_id": data.file_object.object_id,
+            "bucket_id": INBOX_BUCKET_ID,
+            "submitter_public_key": base64.b64encode(
+                joint_fixture.keypair.public
+            ).decode("utf-8"),
+            "upload_date": data.upload_date,
+            "expected_decrypted_sha256": data.checksum,
+            "decrypted_size": data.file_size,
+        }
+        event_in = incoming_irs_event(payload=payload_in, config=joint_fixture.config)
 
-    payload_out = {
-        "s3_endpoint_alias": "test",
-        "file_id": FILE_ID,
-        "object_id": OBJECT_ID,
-        "bucket_id": STAGING_BUCKET_ID,
-        "upload_date": encrypted_random_data.upload_date,
-        "decryption_secret_id": "secret_id",
-        "content_offset": encrypted_random_data.offset,
-        "encrypted_part_size": part_size,
-        "decrypted_sha256": encrypted_random_data.checksum,
-    }
-    expected_event_out = ExpectedEvent(
-        payload=payload_out,
-        type_=joint_fixture.config.interrogation_success_type,
-        key=FILE_ID,
-    )
+        part_size = calc_part_size(file_size=data.file_size)
 
-    async with joint_fixture.kafka.record_events(
-        in_topic=joint_fixture.config.interrogation_topic,
-    ) as event_recorder:
-        await joint_fixture.kafka.publish_event(**event_in)
+        payload_out = {
+            "s3_endpoint_alias": endpoint_alias,
+            "file_id": data.file_id,
+            "object_id": data.file_object.object_id,
+            "bucket_id": STAGING_BUCKET_ID,
+            "upload_date": data.upload_date,
+            "decryption_secret_id": "secret_id",
+            "content_offset": data.offset,
+            "encrypted_part_size": part_size,
+            "decrypted_sha256": data.checksum,
+        }
+        expected_event_out = ExpectedEvent(
+            payload=payload_out,
+            type_=joint_fixture.config.interrogation_success_type,
+            key=data.file_id,
+        )
 
-        await joint_fixture.event_subscriber.run(forever=False)
+        async with joint_fixture.kafka.record_events(
+            in_topic=joint_fixture.config.interrogation_topic,
+        ) as event_recorder:
+            await joint_fixture.kafka.publish_event(**event_in)
 
-    recorded_events = event_recorder.recorded_events
+            await joint_fixture.event_subscriber.run(forever=False)
 
-    assert len(recorded_events) == 1
-    event = recorded_events[0]
+        recorded_events = event_recorder.recorded_events
 
-    expected_event_out.payload["object_id"] = event.payload["object_id"]
-    for key in payload_out:
-        assert event.payload[key] == expected_event_out.payload[key]
+        assert len(recorded_events) == 1
+        event = recorded_events[0]
+
+        expected_event_out.payload["object_id"] = event.payload["object_id"]
+        for key in payload_out:
+            assert event.payload[key] == expected_event_out.payload[key]

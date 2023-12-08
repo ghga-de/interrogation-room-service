@@ -74,10 +74,11 @@ class EventPublisher(EventPublisherPort):
         part_checksums_md5: list[str],
         part_checksums_sha256: list[str],
         content_checksum_sha256: str,
+        s3_endpoint_alias: str,
     ):
         """Produce and send an event if checksum validation was successful"""
         event_payload = event_schemas.FileUploadValidationSuccess(
-            s3_endpoint_alias="test",
+            s3_endpoint_alias=s3_endpoint_alias,
             file_id=file_id,
             object_id=object_id,
             bucket_id=bucket_id,
@@ -104,6 +105,7 @@ class EventPublisher(EventPublisherPort):
         object_id: str,
         bucket_id: str,
         upload_date: str,
+        s3_endpoint_alias: str,
         cause: str = "Checksum mismatch",
     ):
         """
@@ -111,7 +113,7 @@ class EventPublisher(EventPublisherPort):
         if an exception was encountered
         """
         event_payload = event_schemas.FileUploadValidationFailure(
-            s3_endpoint_alias="test",
+            s3_endpoint_alias=s3_endpoint_alias,
             file_id=file_id,
             object_id=object_id,
             bucket_id=bucket_id,

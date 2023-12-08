@@ -20,22 +20,15 @@ import os
 import uuid
 
 from crypt4gh.lib import CIPHER_SEGMENT_SIZE, CryptoError, decrypt_block
+from ghga_service_commons.utils.multinode_storage import S3ObjectStorages
 from hexkit.utils import calc_part_size
 from nacl.bindings import crypto_aead_chacha20poly1305_ietf_encrypt
 
 from irs.adapters.http.api_calls import call_eks_api
 from irs.adapters.http.exceptions import KnownError
-from irs.adapters.inbound.s3 import (
-    complete_staging,
-    get_download_url,
-    get_object_size,
-    init_staging,
-    retrieve_part,
-    retrieve_parts,
-    stage_part,
-)
 from irs.config import CONFIG
 from irs.core.exceptions import LastSegmentCorruptedError, SegmentCorruptedError
+from irs.core.staging_handler import StagingHandler, StorageIds
 from irs.ports.inbound.interrogator import InterrogatorPort
 from irs.ports.outbound.event_pub import EventPublisherPort
 
@@ -46,24 +39,17 @@ class CipherSegmentProcessor:
     def __init__(  # noqa: PLR0913
         self,
         *,
-        download_url: str,
         secret: bytes,
         new_secret: bytes,
-        object_size: int,
-        object_id: str,
         part_size: int,
         offset: int,
+        object_storage_handler: StagingHandler,
     ) -> None:
-        self.download_url = download_url
+        self.object_storage_handler = object_storage_handler
         self.secret = secret
         self.new_secret = new_secret
-        self.object_size = object_size
-        self.object_id = object_id
         self.part_size = part_size
         self.offset = offset
-
-        # needs to be retrieved asynchronously
-        self.upload_id = ""
 
         # hashsum buffers
         self.total_sha256_checksum = hashlib.sha256()
@@ -80,16 +66,13 @@ class CipherSegmentProcessor:
     async def process(self):
         """Delegate processing and return checksums"""
         # start multipart upload for staging multipart upload
-        self.upload_id = await init_staging(object_id=self.object_id)
+        await self.object_storage_handler.init_staging()
 
         await self._process_parts()
 
         # finish staging the re-encrypted file
-        await complete_staging(
-            upload_id=self.upload_id,
-            object_id=self.object_id,
-            part_size=self.part_size,
-            parts=self.reencrypted_part_number,
+        await self.object_storage_handler.complete_staging(
+            parts=self.reencrypted_part_number
         )
 
         return (
@@ -136,10 +119,9 @@ class CipherSegmentProcessor:
 
     async def _process_parts(self):
         """High-level part processing, chunking into ciphersegments"""
-        async for part in retrieve_parts(
-            url=self.download_url,
-            object_size=self.object_size,
-            part_size=self.part_size,
+        incomplete_ciphersegment = b""
+
+        async for part in self.object_storage_handler.retrieve_parts(
             offset=self.offset,
         ):
             if self.partial_ciphersegment:
@@ -208,9 +190,7 @@ class CipherSegmentProcessor:
         self.encrypted_sha256_part_checksums.append(sha256sum)
 
         self.reencrypted_part_number += 1
-        await stage_part(
-            upload_id=self.upload_id,
-            object_id=self.object_id,
+        await self.object_storage_handler.stage_part(
             data=part,
             part_number=self.reencrypted_part_number,
         )
@@ -227,9 +207,11 @@ class Interrogator(InterrogatorPort):
         self,
         *,
         event_publisher: EventPublisherPort,
+        object_storages: S3ObjectStorages,
     ):
         """Initialize class instance with configs and outbound adapter objects."""
         self._event_publisher = event_publisher
+        self._object_storages = object_storages
 
     async def interrogate(  # noqa: PLR0913
         self,
@@ -241,6 +223,7 @@ class Interrogator(InterrogatorPort):
         upload_date: str,
         decrypted_size: int,
         sha256_checksum: str,
+        s3_endpoint_alias: str,
     ):
         """
         Forwards first file part to encryption key store, retrieves file encryption
@@ -248,30 +231,49 @@ class Interrogator(InterrogatorPort):
         ID parameters refer to the object_id and bucket_id associated with the upload,
         i.e. not the staging bucket.
         """
-        object_size = await get_object_size(
+        try:
+            staging_bucket_id, object_storage = self._object_storages.for_alias(
+                s3_endpoint_alias
+            )
+        except KeyError as error:
+            raise ValueError(
+                f"S3 endpoint alias not configured: {s3_endpoint_alias}"
+            ) from error
+
+        object_size = await object_storage.get_object_size(
             object_id=source_object_id, bucket_id=source_bucket_id
         )
         part_size = calc_part_size(file_size=object_size)
+
+        # generate ID for the staging bucket file
+        object_id = str(uuid.uuid4())
+        staging_ids = StorageIds(bucket_id=staging_bucket_id, object_id=object_id)
+        inbox_ids = StorageIds(bucket_id=source_bucket_id, object_id=source_object_id)
+
+        object_storage_handler = StagingHandler(
+            object_storage=object_storage,
+            inbox_ids=inbox_ids,
+            staging_ids=staging_ids,
+            part_size=part_size,
+        )
+
         try:
-            download_url = await get_download_url(
+            download_url = await object_storage.get_object_download_url(
                 object_id=source_object_id, bucket_id=source_bucket_id
             )
-            part = await retrieve_part(url=download_url, start=0, stop=part_size - 1)
+            part = await object_storage_handler.retrieve_part(
+                url=download_url, start=0, stop=part_size - 1
+            )
             submitter_secret, new_secret, secret_id, offset = call_eks_api(
-                file_part=part, public_key=public_key, api_url=CONFIG.eks_url
+                file_part=part, public_key=public_key, api_url=CONFIG.ekss_base_url
             )
 
-            # generate ID for the staging bucket file
-            object_id = str(uuid.uuid4())
-
             cipher_segment_processor = CipherSegmentProcessor(
-                download_url=download_url,
                 secret=submitter_secret,
                 new_secret=new_secret,
-                object_size=object_size,
-                object_id=object_id,
                 part_size=part_size,
                 offset=offset,
+                object_storage_handler=object_storage_handler,
             )
             (
                 part_checksums_md5,
@@ -282,9 +284,10 @@ class Interrogator(InterrogatorPort):
             await self._event_publisher.publish_validation_failure(
                 file_id=file_id,
                 object_id=object_id,
-                bucket_id=CONFIG.staging_bucket,
+                bucket_id=staging_bucket_id,
                 upload_date=upload_date,
                 cause=str(exc),
+                s3_endpoint_alias=s3_endpoint_alias,
             )
             return
 
@@ -292,7 +295,7 @@ class Interrogator(InterrogatorPort):
             await self._event_publisher.publish_validation_success(
                 file_id=file_id,
                 object_id=object_id,
-                bucket_id=CONFIG.staging_bucket,
+                bucket_id=staging_bucket_id,
                 secret_id=secret_id,
                 offset=offset,
                 upload_date=upload_date,
@@ -301,11 +304,13 @@ class Interrogator(InterrogatorPort):
                 part_checksums_md5=part_checksums_md5,
                 content_checksum_sha256=content_checksum_sha256,
                 decrypted_size=decrypted_size,
+                s3_endpoint_alias=s3_endpoint_alias,
             )
         else:
             await self._event_publisher.publish_validation_failure(
                 file_id=file_id,
                 object_id=object_id,
-                bucket_id=CONFIG.staging_bucket,
+                bucket_id=staging_bucket_id,
                 upload_date=upload_date,
+                s3_endpoint_alias=s3_endpoint_alias,
             )

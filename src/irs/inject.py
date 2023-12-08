@@ -19,6 +19,7 @@ from contextlib import asynccontextmanager
 from typing import Optional
 
 from ghga_service_commons.utils.context import asyncnullcontext
+from ghga_service_commons.utils.multinode_storage import S3ObjectStorages
 from hexkit.providers.akafka.provider import KafkaEventPublisher, KafkaEventSubscriber
 
 from irs.adapters.inbound.event_sub import EventSubTranslator
@@ -33,7 +34,10 @@ async def prepare_core(*, config: Config) -> AsyncGenerator[InterrogatorPort, No
     """Constructs and initializes all core components and their outbound dependencies."""
     async with KafkaEventPublisher.construct(config=config) as event_pub_provider:
         event_publisher = EventPublisher(config=config, provider=event_pub_provider)
-        yield Interrogator(event_publisher=event_publisher)
+        object_storages = S3ObjectStorages(config=config)
+        yield Interrogator(
+            event_publisher=event_publisher, object_storages=object_storages
+        )
 
 
 def prepare_core_with_override(
