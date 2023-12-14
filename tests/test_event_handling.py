@@ -13,12 +13,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests for event handling"""
+
 import base64
 import hashlib
 import os
 import sys
 import tempfile
+import time
 from collections.abc import Mapping
+from contextlib import suppress
 from dataclasses import dataclass
 from functools import partial
 from pathlib import Path
@@ -28,10 +31,12 @@ import crypt4gh.lib
 import pytest
 from ghga_service_commons.utils.temp_files import big_temp_file
 from ghga_service_commons.utils.utc_dates import now_as_utc
-from hexkit.providers.akafka.testutils import ExpectedEvent, kafka_fixture  # noqa: F401
+from hexkit.custom_types import Ascii, JsonObject
+from hexkit.providers.akafka.testutils import ExpectedEvent
 from hexkit.providers.s3.testutils import FileObject
 from hexkit.utils import calc_part_size
 
+from irs.adapters.inbound.event_sub import EventSubTranslator  # noqa: F401
 from tests.fixtures.config import Config
 from tests.fixtures.joint import (
     FILE_SIZE,
@@ -40,6 +45,7 @@ from tests.fixtures.joint import (
     JointFixture,
     S3Fixture,
     joint_fixture,  # noqa: F401
+    kafka_fixture,  # noqa: F401
     keypair_fixture,  # noqa: F401
     s3_fixture,  # noqa: F401
     second_s3_fixture,  # noqa: F401
@@ -199,6 +205,11 @@ async def test_failure_event(
         assert recorded_events[0].payload == expected_event_out.payload
 
 
+async def crash(self, *, payload: JsonObject, type_: Ascii, topic: Ascii):
+    """Raise exception for monkey patching"""
+    raise ValueError("Yay, here we go again.")
+
+
 @pytest.mark.asyncio
 async def test_success_event(
     monkeypatch,
@@ -259,11 +270,21 @@ async def test_success_event(
             in_topic=joint_fixture.config.interrogation_topic,
         ) as event_recorder:
             await joint_fixture.kafka.publish_event(**event_in)
+            with monkeypatch.context() as patch:
+                patch.setattr(
+                    "irs.adapters.inbound.event_sub.EventSubTranslator._consume_validated",
+                    crash,
+                )
+                with suppress(ValueError):
+                    await joint_fixture.event_subscriber.run(forever=False)
+
+            print("Waiting for 10 seconds.")
+            time.sleep(10)
+            print("Om Nom Nom... Trying to consume event.")
 
             await joint_fixture.event_subscriber.run(forever=False)
 
         recorded_events = event_recorder.recorded_events
-
         assert len(recorded_events) == 1
         event = recorded_events[0]
 

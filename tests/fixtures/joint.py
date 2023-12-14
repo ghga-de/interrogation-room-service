@@ -24,8 +24,12 @@ from ghga_service_commons.utils.multinode_storage import (
     S3ObjectStorageNodeConfig,
     S3ObjectStoragesConfig,
 )
-from hexkit.providers.akafka import KafkaEventSubscriber
-from hexkit.providers.akafka.testutils import KafkaFixture, kafka_fixture  # noqa: F401
+from hexkit.providers.akafka import (
+    KafkaConfig,
+    KafkaEventPublisher,
+    KafkaEventSubscriber,
+)
+from hexkit.providers.akafka.testutils import KafkaFixture
 from hexkit.providers.s3.testutils import (
     S3Fixture,
     s3_fixture,
@@ -70,9 +74,26 @@ class JointFixture:
 
 
 @pytest_asyncio.fixture()
+async def kafka_fixture() -> AsyncGenerator[KafkaFixture, None]:
+    """Pytest fixture for tests depending on the Kafka-base providers."""
+    kafka_servers = ["kafka:9092"]
+
+    config = KafkaConfig(  # type: ignore
+        service_name="test_publisher",
+        service_instance_id="001",
+        kafka_servers=kafka_servers,
+    )
+
+    async with KafkaEventPublisher.construct(config=config) as publisher:
+        yield KafkaFixture(
+            config=config, kafka_servers=kafka_servers, publisher=publisher
+        )
+
+
+@pytest_asyncio.fixture()
 async def joint_fixture(
     keypair_fixture: KeypairFixture,  # noqa: F811
-    kafka_fixture: KafkaFixture,  # noqa: F811
+    kafka_fixture: KafkaFixture,
     s3_fixture: S3Fixture,
     second_s3_fixture: S3Fixture,
 ) -> AsyncGenerator[JointFixture, None]:
