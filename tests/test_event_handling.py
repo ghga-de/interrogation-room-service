@@ -21,7 +21,6 @@ import sys
 import tempfile
 import time
 from collections.abc import Mapping
-from contextlib import suppress
 from dataclasses import dataclass
 from functools import partial
 from pathlib import Path
@@ -275,7 +274,7 @@ async def test_success_event(
                     "irs.adapters.inbound.event_sub.EventSubTranslator._consume_validated",
                     crash,
                 )
-                with suppress(ValueError):
+                with pytest.raises(ValueError):
                     await joint_fixture.event_subscriber.run(forever=False)
 
             print("Waiting for 10 seconds.")
