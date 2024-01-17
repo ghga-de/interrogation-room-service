@@ -1,4 +1,3 @@
-
 [![tests](https://github.com/ghga-de/interrogation-room-service/actions/workflows/tests.yaml/badge.svg)](https://github.com/ghga-de/interrogation-room-service/actions/workflows/tests.yaml)
 [![Coverage Status](https://coveralls.io/repos/github/ghga-de/interrogation-room-service/badge.svg?branch=main)](https://coveralls.io/github/ghga-de/interrogation-room-service?branch=main)
 
@@ -7,8 +6,6 @@
 Interrogation Room Service
 
 ## Description
-
-<!-- Please provide a short overview of the features of this service.-->
 
 The Interrogation Room Service (IRS) interfaces with the Encryption Key Store Service to process Crypt4GH encrypted files uploaded to the inbox of a local GHGA node.
 The IRS splits off the file envelope, computes part checksums over the encrypted file content, validates the checksum over the unencrypted file content (in memory) and initiates transfer of the encrypted file content to its permanent storage.
@@ -20,13 +17,13 @@ We recommend using the provided Docker container.
 
 A pre-build version is available at [docker hub](https://hub.docker.com/repository/docker/ghga/interrogation-room-service):
 ```bash
-docker pull ghga/interrogation-room-service:1.0.0
+docker pull ghga/interrogation-room-service:1.1.0
 ```
 
 Or you can build the container yourself from the [`./Dockerfile`](./Dockerfile):
 ```bash
 # Execute in the repo's root dir:
-docker build -t ghga/interrogation-room-service:1.0.0 .
+docker build -t ghga/interrogation-room-service:1.1.0 .
 ```
 
 For production-ready deployment, we recommend using Kubernetes, however,
@@ -34,7 +31,7 @@ for simple use cases, you could execute the service using docker
 on a single server:
 ```bash
 # The entrypoint is preconfigured:
-docker run -p 8080:8080 ghga/interrogation-room-service:1.0.0 --help
+docker run -p 8080:8080 ghga/interrogation-room-service:1.1.0 --help
 ```
 
 If you prefer not to use containers, you may install the service from source:
@@ -179,10 +176,6 @@ of the pydantic documentation.
 
 
 ## Architecture and Design:
-<!-- Please provide an overview of the architecture and design of the code base.
-Mention anything that deviates from the standard triple hexagonal architecture and
-the corresponding structure. -->
-
 This is a Python-based service following the Triple Hexagonal Architecture pattern.
 It uses protocol/provider pairs and dependency injection mechanisms provided by the
 [hexkit](https://github.com/ghga-de/hexkit) library.

@@ -1,0 +1,16 @@
+[project]
+name = "irs"
+version = "1.1.0"
+description = "Interrogation Room Service"
+dependencies = [
+    "ghga-service-commons[api]>=2.0.0",
+    "ghga-event-schemas>=3.0.0,<4",
+    "crypt4gh>=1.6",
+    "hexkit[akafka,s3]>=2.0.0",
+]
+
+[project.urls]
+Repository = "https://github.com/ghga-de/interrogation-room-service"
+
+[project.scripts]
+irs = "irs.__main__:run"
