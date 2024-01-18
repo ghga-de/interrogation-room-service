@@ -1,4 +1,3 @@
-
 [![tests](https://github.com/ghga-de/interrogation-room-service/actions/workflows/tests.yaml/badge.svg)](https://github.com/ghga-de/interrogation-room-service/actions/workflows/tests.yaml)
 [![Coverage Status](https://coveralls.io/repos/github/ghga-de/interrogation-room-service/badge.svg?branch=main)](https://coveralls.io/github/ghga-de/interrogation-room-service?branch=main)
 
@@ -7,8 +6,6 @@
 Interrogation Room Service
 
 ## Description
-
-<!-- Please provide a short overview of the features of this service.-->
 
 The Interrogation Room Service (IRS) interfaces with the Encryption Key Store Service to process Crypt4GH encrypted files uploaded to the inbox of a local GHGA node.
 The IRS splits off the file envelope, computes part checksums over the encrypted file content, validates the checksum over the unencrypted file content (in memory) and initiates transfer of the encrypted file content to its permanent storage.
@@ -20,13 +17,13 @@ We recommend using the provided Docker container.
 
 A pre-build version is available at [docker hub](https://hub.docker.com/repository/docker/ghga/interrogation-room-service):
 ```bash
-docker pull ghga/interrogation-room-service:1.0.0
+docker pull ghga/interrogation-room-service:1.1.0
 ```
 
 Or you can build the container yourself from the [`./Dockerfile`](./Dockerfile):
 ```bash
 # Execute in the repo's root dir:
-docker build -t ghga/interrogation-room-service:1.0.0 .
+docker build -t ghga/interrogation-room-service:1.1.0 .
 ```
 
 For production-ready deployment, we recommend using Kubernetes, however,
@@ -34,7 +31,7 @@ for simple use cases, you could execute the service using docker
 on a single server:
 ```bash
 # The entrypoint is preconfigured:
-docker run -p 8080:8080 ghga/interrogation-room-service:1.0.0 --help
+docker run -p 8080:8080 ghga/interrogation-room-service:1.1.0 --help
 ```
 
 If you prefer not to use containers, you may install the service from source:
@@ -103,7 +100,7 @@ The service requires the following configuration parameters:
 
 - **`object_storages`** *(object)*: Can contain additional properties.
 
-  - **Additional Properties**: Refer to *[#/$defs/S3ObjectStorageNodeConfig](#$defs/S3ObjectStorageNodeConfig)*.
+  - **Additional properties**: Refer to *[#/$defs/S3ObjectStorageNodeConfig](#%24defs/S3ObjectStorageNodeConfig)*.
 
 - **`service_name`** *(string)*: Default: `"irs"`.
 
@@ -133,13 +130,28 @@ The service requires the following configuration parameters:
 
 - **`kafka_security_protocol`** *(string)*: Protocol used to communicate with brokers. Valid values are: PLAINTEXT, SSL. Must be one of: `["PLAINTEXT", "SSL"]`. Default: `"PLAINTEXT"`.
 
-- **`kafka_ssl_cafile`** *(string)*: Certificate Authority file path containing certificates used to sign broker certificates. If a CA not specified, the default system CA will be used if found by OpenSSL. Default: `""`.
+- **`kafka_ssl_cafile`** *(string)*: Certificate Authority file path containing certificates used to sign broker certificates. If a CA is not specified, the default system CA will be used if found by OpenSSL. Default: `""`.
 
 - **`kafka_ssl_certfile`** *(string)*: Optional filename of client certificate, as well as any CA certificates needed to establish the certificate's authenticity. Default: `""`.
 
 - **`kafka_ssl_keyfile`** *(string)*: Optional filename containing the client private key. Default: `""`.
 
 - **`kafka_ssl_password`** *(string)*: Optional password to be used for the client private key. Default: `""`.
+
+- **`generate_correlation_id`** *(boolean)*: A flag, which, if False, will result in an error when trying to publish an event without a valid correlation ID set for the context. If True, the a newly correlation ID will be generated and used in the event header. Default: `true`.
+
+
+  Examples:
+
+  ```json
+  true
+  ```
+
+
+  ```json
+  false
+  ```
+
 
 - **`ekss_base_url`** *(string)*: URL pointing to the Encryption Key Store service.
 
@@ -150,6 +162,96 @@ The service requires the following configuration parameters:
   "http://ekss:8080"
   ```
 
+
+## Definitions
+
+
+- <a id="%24defs/S3Config"></a>**`S3Config`** *(object)*: S3-specific config params.
+Inherit your config class from this class if you need
+to talk to an S3 service in the backend.<br>  Args:
+    s3_endpoint_url (str): The URL to the S3 endpoint.
+    s3_access_key_id (str):
+        Part of credentials for login into the S3 service. See:
+        https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html
+    s3_secret_access_key (str):
+        Part of credentials for login into the S3 service. See:
+        https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html
+    s3_session_token (Optional[str]):
+        Optional part of credentials for login into the S3 service. See:
+        https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html
+    aws_config_ini (Optional[Path]):
+        Path to a config file for specifying more advanced S3 parameters.
+        This should follow the format described here:
+        https://boto3.amazonaws.com/v1/documentation/api/latest/guide/configuration.html#using-a-configuration-file
+        Defaults to None. Cannot contain additional properties.
+
+  - **`s3_endpoint_url`** *(string, required)*: URL to the S3 API.
+
+
+    Examples:
+
+    ```json
+    "http://localhost:4566"
+    ```
+
+
+  - **`s3_access_key_id`** *(string, required)*: Part of credentials for login into the S3 service. See: https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html.
+
+
+    Examples:
+
+    ```json
+    "my-access-key-id"
+    ```
+
+
+  - **`s3_secret_access_key`** *(string, format: password, required)*: Part of credentials for login into the S3 service. See: https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html.
+
+
+    Examples:
+
+    ```json
+    "my-secret-access-key"
+    ```
+
+
+  - **`s3_session_token`**: Part of credentials for login into the S3 service. See: https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html. Default: `null`.
+
+    - **Any of**
+
+      - *string, format: password*
+
+      - *null*
+
+
+    Examples:
+
+    ```json
+    "my-session-token"
+    ```
+
+
+  - **`aws_config_ini`**: Path to a config file for specifying more advanced S3 parameters. This should follow the format described here: https://boto3.amazonaws.com/v1/documentation/api/latest/guide/configuration.html#using-a-configuration-file. Default: `null`.
+
+    - **Any of**
+
+      - *string, format: path*
+
+      - *null*
+
+
+    Examples:
+
+    ```json
+    "~/.aws/config"
+    ```
+
+
+- <a id="%24defs/S3ObjectStorageNodeConfig"></a>**`S3ObjectStorageNodeConfig`** *(object)*: Configuration for one specific object storage node and one bucket in it.<br>  The bucket is the main bucket that the service is responsible for. Cannot contain additional properties.
+
+  - **`bucket`** *(string, required)*
+
+  - **`credentials`**: Refer to *[#/$defs/S3Config](#%24defs/S3Config)*.
 
 
 ### Usage:
@@ -179,10 +281,6 @@ of the pydantic documentation.
 
 
 ## Architecture and Design:
-<!-- Please provide an overview of the architecture and design of the code base.
-Mention anything that deviates from the standard triple hexagonal architecture and
-the corresponding structure. -->
-
 This is a Python-based service following the Triple Hexagonal Architecture pattern.
 It uses protocol/provider pairs and dependency injection mechanisms provided by the
 [hexkit](https://github.com/ghga-de/hexkit) library.

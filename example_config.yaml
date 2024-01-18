@@ -1,4 +1,5 @@
 ekss_base_url: http://ekss:8080/
+generate_correlation_id: true
 interrogation_failure_type: file_validation_failure
 interrogation_success_type: file_validation_success
 interrogation_topic: file_interrogation

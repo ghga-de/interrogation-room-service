@@ -76,7 +76,7 @@
     },
     "S3ObjectStorageNodeConfig": {
       "additionalProperties": false,
-      "description": "Configuration for one specific object storage node",
+      "description": "Configuration for one specific object storage node and one bucket in it.\n\nThe bucket is the main bucket that the service is responsible for.",
       "properties": {
         "bucket": {
           "title": "Bucket",
@@ -182,7 +182,7 @@
     },
     "kafka_ssl_cafile": {
       "default": "",
-      "description": "Certificate Authority file path containing certificates used to sign broker certificates. If a CA not specified, the default system CA will be used if found by OpenSSL.",
+      "description": "Certificate Authority file path containing certificates used to sign broker certificates. If a CA is not specified, the default system CA will be used if found by OpenSSL.",
       "title": "Kafka Ssl Cafile",
       "type": "string"
     },
@@ -203,6 +203,16 @@
       "description": "Optional password to be used for the client private key.",
       "title": "Kafka Ssl Password",
       "type": "string"
+    },
+    "generate_correlation_id": {
+      "default": true,
+      "description": "A flag, which, if False, will result in an error when trying to publish an event without a valid correlation ID set for the context. If True, the a newly correlation ID will be generated and used in the event header.",
+      "examples": [
+        true,
+        false
+      ],
+      "title": "Generate Correlation Id",
+      "type": "boolean"
     },
     "ekss_base_url": {
       "description": "URL pointing to the Encryption Key Store service.",
