@@ -97,6 +97,50 @@
   "additionalProperties": false,
   "description": "Modifies the orginal Settings class provided by the user",
   "properties": {
+    "log_level": {
+      "default": "INFO",
+      "description": "The minimum log level to capture.",
+      "enum": [
+        "CRITICAL",
+        "ERROR",
+        "WARNING",
+        "INFO",
+        "DEBUG",
+        "TRACE"
+      ],
+      "title": "Log Level",
+      "type": "string"
+    },
+    "service_name": {
+      "default": "irs",
+      "title": "Service Name",
+      "type": "string"
+    },
+    "service_instance_id": {
+      "description": "A string that uniquely identifies this instance across all instances of this service. A globally unique Kafka client ID will be created by concatenating the service_name and the service_instance_id.",
+      "examples": [
+        "germany-bw-instance-001"
+      ],
+      "title": "Service Instance Id",
+      "type": "string"
+    },
+    "log_format": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "If set, will replace JSON formatting with the specified string format. If not set, has no effect. In addition to the standard attributes, the following can also be specified: timestamp, service, instance, level, correlation_id, and details",
+      "examples": [
+        "%(timestamp)s - %(service)s - %(level)s - %(message)s",
+        "%(asctime)s - Severity: %(levelno)s - %(msg)s"
+      ],
+      "title": "Log Format"
+    },
     "interrogation_topic": {
       "description": "Name of the topic used for events informing about the outcome of file validations.",
       "examples": [
@@ -143,19 +187,6 @@
       },
       "title": "Object Storages",
       "type": "object"
-    },
-    "service_name": {
-      "default": "irs",
-      "title": "Service Name",
-      "type": "string"
-    },
-    "service_instance_id": {
-      "description": "A string that uniquely identifies this instance across all instances of this service. A globally unique Kafka client ID will be created by concatenating the service_name and the service_instance_id.",
-      "examples": [
-        "germany-bw-instance-001"
-      ],
-      "title": "Service Instance Id",
-      "type": "string"
     },
     "kafka_servers": {
       "description": "A list of connection strings to connect to Kafka bootstrap servers.",
@@ -224,13 +255,13 @@
     }
   },
   "required": [
+    "service_instance_id",
     "interrogation_topic",
     "interrogation_success_type",
     "interrogation_failure_type",
     "upload_received_event_topic",
     "upload_received_event_type",
     "object_storages",
-    "service_instance_id",
     "kafka_servers",
     "ekss_base_url"
   ],
