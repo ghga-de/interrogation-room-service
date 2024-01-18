@@ -16,6 +16,7 @@
 """Config Parameter Modeling and Parsing"""
 from ghga_service_commons.utils.multinode_storage import S3ObjectStoragesConfig
 from hexkit.config import config_from_yaml
+from hexkit.log import LoggingConfig
 from hexkit.providers.akafka import KafkaConfig
 from pydantic import Field
 
@@ -29,6 +30,7 @@ class Config(
     S3ObjectStoragesConfig,
     EventSubTanslatorConfig,
     EventPubTanslatorConfig,
+    LoggingConfig,
 ):
     """Config parameters and their defaults."""
 
