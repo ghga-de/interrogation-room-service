@@ -18,6 +18,7 @@ from ghga_service_commons.utils.multinode_storage import S3ObjectStoragesConfig
 from hexkit.config import config_from_yaml
 from hexkit.log import LoggingConfig
 from hexkit.providers.akafka import KafkaConfig
+from hexkit.providers.mongodb import MongoDbConfig
 from pydantic import Field
 
 from irs.adapters.inbound.event_sub import EventSubTanslatorConfig
@@ -27,6 +28,7 @@ from irs.adapters.outbound.event_pub import EventPubTanslatorConfig
 @config_from_yaml(prefix="irs")
 class Config(
     KafkaConfig,
+    MongoDbConfig,
     S3ObjectStoragesConfig,
     EventSubTanslatorConfig,
     EventPubTanslatorConfig,

@@ -14,23 +14,31 @@
 # limitations under the License.
 """A service for validating uploaded files"""
 
+import contextlib
 import hashlib
 import math
 import os
 import uuid
+from logging import getLogger
 
 from crypt4gh.lib import CIPHER_SEGMENT_SIZE, CryptoError, decrypt_block
+from ghga_event_schemas import pydantic_ as event_schemas
 from ghga_service_commons.utils.multinode_storage import S3ObjectStorages
+from hexkit.protocols.dao import ResourceNotFoundError
 from hexkit.utils import calc_part_size
 from nacl.bindings import crypto_aead_chacha20poly1305_ietf_encrypt
 
-from irs.adapters.http.api_calls import call_eks_api
-from irs.adapters.http.exceptions import KnownError
+from irs.adapters.outbound.http.api_calls import call_eks_api
+from irs.adapters.outbound.http.exceptions import KnownError
 from irs.config import CONFIG
 from irs.core.exceptions import LastSegmentCorruptedError, SegmentCorruptedError
+from irs.core.models import UploadReceivedFingerprint
 from irs.core.staging_handler import StagingHandler, StorageIds
 from irs.ports.inbound.interrogator import InterrogatorPort
+from irs.ports.outbound.dao import FingerprintDaoPort
 from irs.ports.outbound.event_pub import EventPublisherPort
+
+log = getLogger(__name__)
 
 
 class CipherSegmentProcessor:
@@ -207,24 +215,15 @@ class Interrogator(InterrogatorPort):
         self,
         *,
         event_publisher: EventPublisherPort,
+        fingerprint_dao: FingerprintDaoPort,
         object_storages: S3ObjectStorages,
     ):
         """Initialize class instance with configs and outbound adapter objects."""
         self._event_publisher = event_publisher
+        self._fingerprint_dao = fingerprint_dao
         self._object_storages = object_storages
 
-    async def interrogate(  # noqa: PLR0913
-        self,
-        *,
-        file_id: str,
-        source_object_id: str,
-        source_bucket_id: str,
-        public_key: str,
-        upload_date: str,
-        decrypted_size: int,
-        sha256_checksum: str,
-        s3_endpoint_alias: str,
-    ):
+    async def interrogate(self, *, payload: event_schemas.FileUploadReceived):
         """
         Forwards first file part to encryption key store, retrieves file encryption
         secret(s) (K_data), decrypts file and computes checksums. The object and bucket
@@ -233,22 +232,30 @@ class Interrogator(InterrogatorPort):
         """
         try:
             staging_bucket_id, object_storage = self._object_storages.for_alias(
-                s3_endpoint_alias
+                payload.s3_endpoint_alias
             )
         except KeyError as error:
             raise ValueError(
-                f"S3 endpoint alias not configured: {s3_endpoint_alias}"
+                f"Storage alias not configured: {payload.s3_endpoint_alias}"
             ) from error
 
+        fingerprint = UploadReceivedFingerprint.generate(payload=payload)
+
+        with contextlib.suppress(ResourceNotFoundError):
+            await self._fingerprint_dao.get_by_id(id_=fingerprint.checksum)
+            # TODO
+            log.warning("Abort")
+            return
+
         object_size = await object_storage.get_object_size(
-            object_id=source_object_id, bucket_id=source_bucket_id
+            object_id=payload.object_id, bucket_id=payload.bucket_id
         )
         part_size = calc_part_size(file_size=object_size)
 
         # generate ID for the staging bucket file
         object_id = str(uuid.uuid4())
         staging_ids = StorageIds(bucket_id=staging_bucket_id, object_id=object_id)
-        inbox_ids = StorageIds(bucket_id=source_bucket_id, object_id=source_object_id)
+        inbox_ids = StorageIds(bucket_id=payload.bucket_id, object_id=payload.object_id)
 
         object_storage_handler = StagingHandler(
             object_storage=object_storage,
@@ -259,13 +266,15 @@ class Interrogator(InterrogatorPort):
 
         try:
             download_url = await object_storage.get_object_download_url(
-                object_id=source_object_id, bucket_id=source_bucket_id
+                object_id=payload.object_id, bucket_id=payload.bucket_id
             )
             part = await object_storage_handler.retrieve_part(
                 url=download_url, start=0, stop=part_size - 1
             )
             submitter_secret, new_secret, secret_id, offset = call_eks_api(
-                file_part=part, public_key=public_key, api_url=CONFIG.ekss_base_url
+                file_part=part,
+                public_key=payload.submitter_public_key,
+                api_url=CONFIG.ekss_base_url,
             )
 
             cipher_segment_processor = CipherSegmentProcessor(
@@ -282,35 +291,37 @@ class Interrogator(InterrogatorPort):
             ) = await cipher_segment_processor.process()
         except (CryptoError, KnownError, ValueError) as exc:
             await self._event_publisher.publish_validation_failure(
-                file_id=file_id,
+                file_id=payload.file_id,
                 object_id=object_id,
                 bucket_id=staging_bucket_id,
-                upload_date=upload_date,
+                upload_date=payload.upload_date,
                 cause=str(exc),
-                s3_endpoint_alias=s3_endpoint_alias,
+                s3_endpoint_alias=payload.s3_endpoint_alias,
             )
             return
 
-        if sha256_checksum == content_checksum_sha256:
+        if payload.expected_decrypted_sha256 == content_checksum_sha256:
             await self._event_publisher.publish_validation_success(
-                file_id=file_id,
+                file_id=payload.file_id,
                 object_id=object_id,
                 bucket_id=staging_bucket_id,
                 secret_id=secret_id,
                 offset=offset,
-                upload_date=upload_date,
+                upload_date=payload.upload_date,
                 part_size=part_size,
                 part_checksums_sha256=part_checksums_sha256,
                 part_checksums_md5=part_checksums_md5,
                 content_checksum_sha256=content_checksum_sha256,
-                decrypted_size=decrypted_size,
-                s3_endpoint_alias=s3_endpoint_alias,
+                decrypted_size=payload.decrypted_size,
+                s3_endpoint_alias=payload.s3_endpoint_alias,
             )
         else:
             await self._event_publisher.publish_validation_failure(
-                file_id=file_id,
+                file_id=payload.file_id,
                 object_id=object_id,
                 bucket_id=staging_bucket_id,
-                upload_date=upload_date,
-                s3_endpoint_alias=s3_endpoint_alias,
+                upload_date=payload.upload_date,
+                s3_endpoint_alias=payload.s3_endpoint_alias,
             )
+
+        await self._fingerprint_dao.insert(fingerprint)

@@ -12,21 +12,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-"""Interface for validating uploaded files"""
-
-from abc import ABC, abstractmethod
-
-from ghga_event_schemas import pydantic_ as event_schemas
+#
+"""DAO interface used for accessing the database."""
 
 
-class InterrogatorPort(ABC):
-    """The interface of a service for validating the content of encrypted files."""
+from hexkit.protocols.dao import DaoNaturalId
 
-    @abstractmethod
-    async def interrogate(self, *, payload: event_schemas.FileUploadReceived):
-        """
-        Forwards first file part to encryption key store, retrieves file encryption
-        secret(s) (K_data), decrypts file and computes checksums
-        """
-        ...
+from irs.core import models
+
+FingerprintDaoPort = DaoNaturalId[models.UploadReceivedFingerprint]
