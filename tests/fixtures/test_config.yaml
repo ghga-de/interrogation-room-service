@@ -17,3 +17,6 @@ interrogation_success_type: file_validation_success
 interrogation_failure_type: file_validation_failure
 upload_received_event_topic: file_uploads
 upload_received_event_type: file_upload_received
+
+db_connection_str: "mongodb://mongodb:27017"
+db_name: "dev_db"

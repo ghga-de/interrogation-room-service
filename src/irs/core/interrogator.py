@@ -243,8 +243,12 @@ class Interrogator(InterrogatorPort):
 
         with contextlib.suppress(ResourceNotFoundError):
             await self._fingerprint_dao.get_by_id(id_=fingerprint.checksum)
-            # TODO
-            log.warning("Abort")
+            file_id = payload.file_id
+            log.warning(
+                "Payload for file ID '%s' has already been processed.",
+                file_id,
+                extra={"file_id": file_id},
+            )
             return
 
         object_size = await object_storage.get_object_size(
@@ -324,4 +328,5 @@ class Interrogator(InterrogatorPort):
                 s3_endpoint_alias=payload.s3_endpoint_alias,
             )
 
+        # Everything has been processed successfully, add fingerprint to db for lookup
         await self._fingerprint_dao.insert(fingerprint)

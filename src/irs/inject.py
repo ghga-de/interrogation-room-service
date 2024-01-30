@@ -35,7 +35,7 @@ from irs.ports.inbound.interrogator import InterrogatorPort
 async def prepare_core(*, config: Config) -> AsyncGenerator[InterrogatorPort, None]:
     """Constructs and initializes all core components and their outbound dependencies."""
     dao_factory = MongoDbDaoFactory(config=config)
-    fingerprint_dao = FingerprintDaoConstructor.construct(dao_factory=dao_factory)
+    fingerprint_dao = await FingerprintDaoConstructor.construct(dao_factory=dao_factory)
 
     async with KafkaEventPublisher.construct(config=config) as event_pub_provider:
         event_publisher = EventPublisher(config=config, provider=event_pub_provider)
