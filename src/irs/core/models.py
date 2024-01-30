@@ -30,7 +30,7 @@ class UploadReceivedFingerprint(BaseModel):
     """
 
     checksum: str
-    creation_data: UTCDatetime = Field(default_factory=now_as_utc)
+    creation_date: UTCDatetime = Field(default_factory=now_as_utc)
 
     @staticmethod
     def generate(
