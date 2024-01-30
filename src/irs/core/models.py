@@ -25,8 +25,9 @@ from pydantic import BaseModel, Field
 
 class UploadReceivedFingerprint(BaseModel):
     """
-    Contains the hash sum of a FileUploadReceived payload and the date it hash been
-    generated to be able to identify already seen payloads and expunge old fingerprints
+    Stores the hash of a FileUploadReceived payload along with its generation
+    timestamp. This facilitates the identification of previously encountered
+    payloads and the removal of old fingerprints.
     """
 
     checksum: str
