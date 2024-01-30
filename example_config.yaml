@@ -1,3 +1,5 @@
+db_connection_str: '**********'
+db_name: dev_db
 ekss_base_url: http://ekss:8080/
 generate_correlation_id: true
 interrogation_failure_type: file_validation_failure
