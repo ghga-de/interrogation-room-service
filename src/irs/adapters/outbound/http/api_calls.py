@@ -18,8 +18,8 @@ import base64
 
 import requests
 
-from irs.adapters.http import exceptions
-from irs.adapters.http.exception_translation import ResponseExceptionTranslator
+from irs.adapters.outbound.http import exceptions
+from irs.adapters.outbound.http.exception_translation import ResponseExceptionTranslator
 
 
 def call_eks_api(

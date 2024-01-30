@@ -26,12 +26,15 @@ from pathlib import Path
 import crypt4gh.header
 import crypt4gh.lib
 import pytest
+from ghga_event_schemas import pydantic_ as event_schemas
 from ghga_service_commons.utils.temp_files import big_temp_file
 from ghga_service_commons.utils.utc_dates import now_as_utc
-from hexkit.providers.akafka.testutils import ExpectedEvent, kafka_fixture  # noqa: F401
+from hexkit.providers.akafka.testutils import ExpectedEvent
 from hexkit.providers.s3.testutils import FileObject
 from hexkit.utils import calc_part_size
 
+from irs.adapters.outbound.dao import FingerprintDaoConstructor
+from irs.core.models import UploadReceivedFingerprint
 from tests.fixtures.config import Config
 from tests.fixtures.joint import (
     FILE_SIZE,
@@ -40,7 +43,9 @@ from tests.fixtures.joint import (
     JointFixture,
     S3Fixture,
     joint_fixture,  # noqa: F401
+    kafka_fixture,  # noqa: F401
     keypair_fixture,  # noqa: F401
+    mongodb_fixture,  # noqa: F401
     s3_fixture,  # noqa: F401
     second_s3_fixture,  # noqa: F401
 )
@@ -130,7 +135,7 @@ def ekss_call(
     )
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio(scope="session")
 async def test_failure_event(
     monkeypatch,
     joint_fixture: JointFixture,  # noqa: F811
@@ -199,7 +204,7 @@ async def test_failure_event(
         assert recorded_events[0].payload == expected_event_out.payload
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio(scope="session")
 async def test_success_event(
     monkeypatch,
     joint_fixture: JointFixture,  # noqa: F811
@@ -270,3 +275,69 @@ async def test_success_event(
         expected_event_out.payload["object_id"] = event.payload["object_id"]
         for key in payload_out:
             assert event.payload[key] == expected_event_out.payload[key]
+
+        # check event fingerprint is stored in DB
+        mongo_dao = await FingerprintDaoConstructor.construct(
+            dao_factory=joint_fixture.mongodb.dao_factory
+        )
+        seen_event = event_schemas.FileUploadReceived(**payload_in)
+        fingerprint = UploadReceivedFingerprint.generate(seen_event)
+
+        await mongo_dao.get_by_id(fingerprint.checksum)
+
+
+@pytest.mark.asyncio(scope="session")
+async def test_fingerprint_already_present(
+    caplog,
+    monkeypatch,
+    joint_fixture: JointFixture,  # noqa: F811
+):
+    """Test the whole pipeline from receiving an event to notifying about success"""
+    for s3, endpoint_alias in (
+        (joint_fixture.s3, joint_fixture.endpoint_aliases.node1),
+        (joint_fixture.second_s3, joint_fixture.endpoint_aliases.node2),
+    ):
+        data = await create_test_file(
+            private_key=joint_fixture.keypair.private,
+            public_key=joint_fixture.keypair.public,
+            s3=s3,
+        )
+
+        ekss_patch = partial(ekss_call, data=data)
+
+        monkeypatch.setattr(
+            "irs.core.interrogator.call_eks_api",
+            ekss_patch,
+        )
+
+        payload_in = {
+            "s3_endpoint_alias": endpoint_alias,
+            "file_id": data.file_id,
+            "object_id": data.file_object.object_id,
+            "bucket_id": INBOX_BUCKET_ID,
+            "submitter_public_key": base64.b64encode(
+                joint_fixture.keypair.public
+            ).decode("utf-8"),
+            "upload_date": data.upload_date,
+            "expected_decrypted_sha256": data.checksum,
+            "decrypted_size": data.file_size,
+        }
+        event_in = incoming_irs_event(payload=payload_in, config=joint_fixture.config)
+
+        # create db fingerprint entry
+        mongo_dao = await FingerprintDaoConstructor.construct(
+            dao_factory=joint_fixture.mongodb.dao_factory
+        )
+        seen_event = event_schemas.FileUploadReceived(**payload_in)
+        fingerprint = UploadReceivedFingerprint.generate(seen_event)
+
+        await mongo_dao.insert(fingerprint)
+
+        # reset captured logs
+        caplog.clear()
+        await joint_fixture.kafka.publish_event(**event_in)
+        await joint_fixture.event_subscriber.run(forever=False)
+        assert (
+            f"Payload for file ID '{seen_event.file_id}' has already been processed."
+            in caplog.messages
+        )

@@ -12,21 +12,26 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+#
 
-"""Interface for validating uploaded files"""
+"""Contains DAOs for database access."""
 
-from abc import ABC, abstractmethod
+from hexkit.protocols.dao import DaoFactoryProtocol
 
-from ghga_event_schemas import pydantic_ as event_schemas
+from irs.core import models
+from irs.ports.outbound.dao import FingerprintDaoPort
 
 
-class InterrogatorPort(ABC):
-    """The interface of a service for validating the content of encrypted files."""
+class FingerprintDaoConstructor:
+    """Constructor compatible with the hexkit.inject.AsyncConstructable type. Used to
+    construct a DAO for interacting with the database.
+    """
 
-    @abstractmethod
-    async def interrogate(self, *, payload: event_schemas.FileUploadReceived):
-        """
-        Forwards first file part to encryption key store, retrieves file encryption
-        secret(s) (K_data), decrypts file and computes checksums
-        """
-        ...
+    @staticmethod
+    async def construct(*, dao_factory: DaoFactoryProtocol) -> FingerprintDaoPort:
+        """Get a DAO using the specified provider."""
+        return await dao_factory.get_dao(
+            name="fingerprints",
+            dto_model=models.UploadReceivedFingerprint,
+            id_field="checksum",
+        )

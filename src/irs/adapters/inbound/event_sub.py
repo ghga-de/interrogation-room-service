@@ -73,13 +73,4 @@ class EventSubTranslator(EventSubscriberProtocol):
             schema=event_schemas.FileUploadReceived,
         )
 
-        await self._interrogator.interrogate(
-            file_id=validated_payload.file_id,
-            source_object_id=validated_payload.object_id,
-            source_bucket_id=validated_payload.bucket_id,
-            public_key=validated_payload.submitter_public_key,
-            upload_date=validated_payload.upload_date,
-            decrypted_size=validated_payload.decrypted_size,
-            sha256_checksum=validated_payload.expected_decrypted_sha256,
-            s3_endpoint_alias=validated_payload.s3_endpoint_alias,
-        )
+        await self._interrogator.interrogate(payload=validated_payload)

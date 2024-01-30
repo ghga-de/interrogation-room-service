@@ -16,20 +16,20 @@
 
 """Provides multiple fixtures in one spot"""
 
+import asyncio
 from collections.abc import AsyncGenerator
 from dataclasses import dataclass
 
+import pytest
 import pytest_asyncio
 from ghga_service_commons.utils.multinode_storage import (
     S3ObjectStorageNodeConfig,
     S3ObjectStoragesConfig,
 )
 from hexkit.providers.akafka import KafkaEventSubscriber
-from hexkit.providers.akafka.testutils import KafkaFixture, kafka_fixture  # noqa: F401
-from hexkit.providers.s3.testutils import (
-    S3Fixture,
-    s3_fixture,
-)
+from hexkit.providers.akafka.testutils import KafkaFixture, get_kafka_fixture
+from hexkit.providers.mongodb.testutils import MongoDbFixture, get_mongodb_fixture
+from hexkit.providers.s3.testutils import S3Fixture, get_s3_fixture
 
 from irs.config import Config
 from irs.inject import prepare_core, prepare_event_subscriber
@@ -44,7 +44,11 @@ FILE_SIZE = 50 * 1024**2
 INBOX_BUCKET_ID = "test-inbox"
 STAGING_BUCKET_ID = "test-staging"
 
-second_s3_fixture = s3_fixture
+
+kafka_fixture = get_kafka_fixture(scope="session")
+mongodb_fixture = get_mongodb_fixture(scope="session")
+s3_fixture = get_s3_fixture(scope="session")
+second_s3_fixture = get_s3_fixture(scope="session")
 
 
 @dataclass
@@ -64,21 +68,29 @@ class JointFixture:
     interrogator: InterrogatorPort
     kafka: KafkaFixture
     keypair: KeypairFixture
+    mongodb: MongoDbFixture
     s3: S3Fixture
     second_s3: S3Fixture
     endpoint_aliases: EndpointAliases
 
+    async def reset_state(self):
+        """Completely reset fixture states"""
+        await self.s3.empty_buckets()
+        await self.second_s3.empty_buckets()
+        self.mongodb.empty_collections()
+        self.kafka.clear_topics()
+        self.keypair.regenerate()
 
-@pytest_asyncio.fixture()
+
+@pytest_asyncio.fixture(scope="session")
 async def joint_fixture(
     keypair_fixture: KeypairFixture,  # noqa: F811
-    kafka_fixture: KafkaFixture,  # noqa: F811
+    kafka_fixture: KafkaFixture,
+    mongodb_fixture: MongoDbFixture,
     s3_fixture: S3Fixture,
     second_s3_fixture: S3Fixture,
 ) -> AsyncGenerator[JointFixture, None]:
     """A fixture that embeds all other fixtures for integration testing"""
-    # merge configs from different sources with the default one:
-
     node_config = S3ObjectStorageNodeConfig(
         bucket=STAGING_BUCKET_ID, credentials=s3_fixture.config
     )
@@ -94,7 +106,9 @@ async def joint_fixture(
             endpoint_aliases.node2: second_node_config,
         }
     )
-    config = get_config(sources=[kafka_fixture.config, object_storage_config])
+    config = get_config(
+        sources=[kafka_fixture.config, mongodb_fixture.config, object_storage_config]
+    )
 
     await s3_fixture.populate_buckets([INBOX_BUCKET_ID, STAGING_BUCKET_ID])
     await second_s3_fixture.populate_buckets([INBOX_BUCKET_ID, STAGING_BUCKET_ID])
@@ -109,7 +123,18 @@ async def joint_fixture(
             interrogator=interrogator,
             kafka=kafka_fixture,
             keypair=keypair_fixture,
+            mongodb=mongodb_fixture,
             s3=s3_fixture,
             second_s3=second_s3_fixture,
             endpoint_aliases=endpoint_aliases,
         )
+
+
+@pytest.fixture(autouse=True, scope="function")
+def reset_state(joint_fixture: JointFixture):
+    """Clear joint_fixture state before tests that use this fixture.
+
+    This is a function-level fixture because it needs to run in each test.
+    """
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(joint_fixture.reset_state())

@@ -21,8 +21,10 @@ from typing import Optional
 from ghga_service_commons.utils.context import asyncnullcontext
 from ghga_service_commons.utils.multinode_storage import S3ObjectStorages
 from hexkit.providers.akafka.provider import KafkaEventPublisher, KafkaEventSubscriber
+from hexkit.providers.mongodb import MongoDbDaoFactory
 
 from irs.adapters.inbound.event_sub import EventSubTranslator
+from irs.adapters.outbound.dao import FingerprintDaoConstructor
 from irs.adapters.outbound.event_pub import EventPublisher
 from irs.config import Config
 from irs.core.interrogator import Interrogator
@@ -32,11 +34,16 @@ from irs.ports.inbound.interrogator import InterrogatorPort
 @asynccontextmanager
 async def prepare_core(*, config: Config) -> AsyncGenerator[InterrogatorPort, None]:
     """Constructs and initializes all core components and their outbound dependencies."""
+    dao_factory = MongoDbDaoFactory(config=config)
+    fingerprint_dao = await FingerprintDaoConstructor.construct(dao_factory=dao_factory)
+
     async with KafkaEventPublisher.construct(config=config) as event_pub_provider:
         event_publisher = EventPublisher(config=config, provider=event_pub_provider)
         object_storages = S3ObjectStorages(config=config)
         yield Interrogator(
-            event_publisher=event_publisher, object_storages=object_storages
+            event_publisher=event_publisher,
+            fingerprint_dao=fingerprint_dao,
+            object_storages=object_storages,
         )
 
 

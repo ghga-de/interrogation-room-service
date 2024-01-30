@@ -22,7 +22,7 @@ from typing import Optional
 import requests
 from hexkit.protocols.objstorage import ObjectStorageProtocol
 
-from irs.adapters.http import exceptions
+from irs.adapters.outbound.http import exceptions
 
 
 def calc_part_ranges(
