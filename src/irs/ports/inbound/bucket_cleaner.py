@@ -13,12 +13,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-"""DAO interface used for accessing the database."""
+
+from abc import ABC, abstractmethod
+
+from ghga_event_schemas import pydantic_ as event_schemas
 
 
-from hexkit.protocols.dao import DaoNaturalId
+class BucketCleanerPort(ABC):
+    """Interface for a service removing stale objects from staging buckets."""
 
-from irs.core import models
-
-CleanupDataDao = DaoNaturalId[models.CleanupData]
-FingerprintDaoPort = DaoNaturalId[models.UploadReceivedFingerprint]
+    @abstractmethod
+    async def clean(self, *, payload: event_schemas.FileInternallyRegistered):
+        """Consumes"""
+        ...
