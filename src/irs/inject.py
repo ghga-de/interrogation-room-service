@@ -24,7 +24,10 @@ from hexkit.providers.akafka.provider import KafkaEventPublisher, KafkaEventSubs
 from hexkit.providers.mongodb import MongoDbDaoFactory
 
 from irs.adapters.inbound.event_sub import EventSubTranslator
-from irs.adapters.outbound.dao import FingerprintDaoConstructor
+from irs.adapters.outbound.dao import (
+    FingerprintDaoConstructor,
+    StagingObjectDaoConstructor,
+)
 from irs.adapters.outbound.event_pub import EventPublisher
 from irs.config import Config
 from irs.core.interrogator import Interrogator
@@ -36,6 +39,9 @@ async def prepare_core(*, config: Config) -> AsyncGenerator[InterrogatorPort, No
     """Constructs and initializes all core components and their outbound dependencies."""
     dao_factory = MongoDbDaoFactory(config=config)
     fingerprint_dao = await FingerprintDaoConstructor.construct(dao_factory=dao_factory)
+    staging_object_dao = await StagingObjectDaoConstructor.construct(
+        dao_factory=dao_factory
+    )
 
     async with KafkaEventPublisher.construct(config=config) as event_pub_provider:
         event_publisher = EventPublisher(config=config, provider=event_pub_provider)
@@ -43,6 +49,7 @@ async def prepare_core(*, config: Config) -> AsyncGenerator[InterrogatorPort, No
         yield Interrogator(
             event_publisher=event_publisher,
             fingerprint_dao=fingerprint_dao,
+            staging_object_dao=staging_object_dao,
             object_storages=object_storages,
         )
 

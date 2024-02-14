@@ -30,3 +30,10 @@ class InterrogatorPort(ABC):
         secret(s) (K_data), decrypts file and computes checksums
         """
         ...
+
+    @abstractmethod
+    async def remove_staging_object(
+        self, *, payload: event_schemas.FileInternallyRegistered
+    ):
+        """Remove transient object from staging once copy to permanent storage has been confirmed"""
+        ...

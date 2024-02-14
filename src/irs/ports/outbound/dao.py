@@ -20,5 +20,5 @@ from hexkit.protocols.dao import DaoNaturalId
 
 from irs.core import models
 
-CleanupDataDao = DaoNaturalId[models.CleanupData]
+StagingObjectDaoPort = DaoNaturalId[models.StagingObject]
 FingerprintDaoPort = DaoNaturalId[models.UploadReceivedFingerprint]

@@ -21,7 +21,6 @@ from hexkit.protocols.eventsub import EventSubscriberProtocol
 from pydantic import Field
 from pydantic_settings import BaseSettings
 
-from irs.ports.inbound.bucket_cleaner import BucketCleanerPort
 from irs.ports.inbound.interrogator import InterrogatorPort
 
 
@@ -60,12 +59,10 @@ class EventSubTranslator(EventSubscriberProtocol):
     def __init__(
         self,
         config: EventSubTanslatorConfig,
-        bucket_cleaner: BucketCleanerPort,
         interrogator: InterrogatorPort,
     ):
         """Initialize with config parameters and core dependencies."""
         self._config = config
-        self._bucket_cleaner = bucket_cleaner
         self._interrogator = interrogator
 
         self.topics_of_interest = [
@@ -88,13 +85,16 @@ class EventSubTranslator(EventSubscriberProtocol):
         """
         if type_ == self._config.upload_received_event_type:
             await self._consume_upload_received(payload=payload)
-        elif type_ == "":
-            ...
+        elif type_ == self._config.file_registered_event_type:
+            await self._consume_file_internally_registered(payload=payload)
         else:
             raise RuntimeError(f"Unexpected event of type: {type_}")
 
     async def _consume_upload_received(self, *, payload: JsonObject):
-        """TODO"""
+        """
+        Consume upload finished event to grab object data from the announced inbox bucket,
+        re-encrypt it and move re-encrypted data into staging.
+        """
         validated_payload = get_validated_payload(
             payload=payload,
             schema=event_schemas.FileUploadReceived,
@@ -103,10 +103,13 @@ class EventSubTranslator(EventSubscriberProtocol):
         await self._interrogator.interrogate(payload=validated_payload)
 
     async def _consume_file_internally_registered(self, *, payload: JsonObject):
-        """TODO"""
+        """
+        Consume confirmation event that object data has been moved to permanent storage
+        and the transient staging copy can be removed.
+        """
         validated_payload = get_validated_payload(
             payload=payload,
             schema=event_schemas.FileInternallyRegistered,
         )
 
-        await self._bucket_cleaner.clean(payload=validated_payload)
+        await self._interrogator.remove_staging_object(payload=validated_payload)

@@ -32,10 +32,10 @@ from irs.adapters.outbound.http.api_calls import call_eks_api
 from irs.adapters.outbound.http.exceptions import KnownError
 from irs.config import CONFIG
 from irs.core.exceptions import LastSegmentCorruptedError, SegmentCorruptedError
-from irs.core.models import UploadReceivedFingerprint
+from irs.core.models import StagingObject, UploadReceivedFingerprint
 from irs.core.staging_handler import StagingHandler, StorageIds
 from irs.ports.inbound.interrogator import InterrogatorPort
-from irs.ports.outbound.dao import FingerprintDaoPort
+from irs.ports.outbound.dao import FingerprintDaoPort, StagingObjectDaoPort
 from irs.ports.outbound.event_pub import EventPublisherPort
 
 log = getLogger(__name__)
@@ -216,11 +216,13 @@ class Interrogator(InterrogatorPort):
         *,
         event_publisher: EventPublisherPort,
         fingerprint_dao: FingerprintDaoPort,
+        staging_object_dao: StagingObjectDaoPort,
         object_storages: S3ObjectStorages,
     ):
         """Initialize class instance with configs and outbound adapter objects."""
         self._event_publisher = event_publisher
         self._fingerprint_dao = fingerprint_dao
+        self._staging_object_dao = staging_object_dao
         self._object_storages = object_storages
 
     async def interrogate(self, *, payload: event_schemas.FileUploadReceived):
@@ -268,6 +270,7 @@ class Interrogator(InterrogatorPort):
             part_size=part_size,
         )
 
+        # do the actual work
         try:
             download_url = await object_storage.get_object_download_url(
                 object_id=payload.object_id, bucket_id=payload.bucket_id
@@ -304,6 +307,11 @@ class Interrogator(InterrogatorPort):
             )
             return
 
+        # save mapping for stale object checking/removal
+        staging_object = StagingObject(file_id=payload.file_id, object_id=object_id)
+        await self._staging_object_dao.insert(dto=staging_object)
+
+        # handle publishing both outcomes
         if payload.expected_decrypted_sha256 == content_checksum_sha256:
             await self._event_publisher.publish_validation_success(
                 file_id=payload.file_id,
@@ -330,3 +338,48 @@ class Interrogator(InterrogatorPort):
 
         # Everything has been processed successfully, add fingerprint to db for lookup
         await self._fingerprint_dao.insert(fingerprint)
+
+    async def remove_staging_object(
+        self, *, payload: event_schemas.FileInternallyRegistered
+    ):
+        """Remove transient object from staging once copy to permanent storage has been confirmed."""
+        file_id = payload.file_id
+        storage_alias = payload.s3_endpoint_alias
+
+        try:
+            staging_bucket_id, object_storage = self._object_storages.for_alias(
+                storage_alias
+            )
+        except KeyError as error:
+            raise ValueError(
+                f"Storage alias not configured: {payload.s3_endpoint_alias}"
+            ) from error
+
+        try:
+            staging_object = await self._staging_object_dao.get_by_id(id_=file_id)
+        except ResourceNotFoundError as error:
+            log.warning("No staging object for file '%s'.", file_id)
+            raise error
+
+        object_exists = await object_storage.does_object_exist(
+            bucket_id=staging_bucket_id, object_id=staging_object.object_id
+        )
+
+        if not object_exists:
+            log.critical(
+                "Object '%s' no longer in staging bucket '%s' of storage '%s'.",
+                staging_object.object_id,
+                staging_bucket_id,
+                storage_alias,
+            )
+            # should this raise?
+
+        await object_storage.delete_object(
+            bucket_id=staging_bucket_id, object_id=staging_object.object_id
+        )
+
+        try:
+            await self._staging_object_dao.delete(id_=file_id)
+        except ResourceNotFoundError as error:
+            log.critical("What?")
+            raise error

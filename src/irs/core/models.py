@@ -23,12 +23,21 @@ from ghga_service_commons.utils.utc_dates import UTCDatetime, now_as_utc
 from pydantic import BaseModel, Field
 
 
-class CleanupData(BaseModel):
-    """TODO"""
+class StagingObject(BaseModel):
+    """
+    Stores data mapping an object in a staging bucket to its file ID.
 
-    creation_date: UTCDatetime = Field(default_factory=now_as_utc)
+    This is done to allow checking for and the removal of stale objects, as only the
+    file ID is available from the incoming validation event.
+
+    Needs a timestamp, as the downstream failure path does not return a failure event
+    and the CLI command checking for stale objects needs some information on when to
+    consider and object in staging stale.
+    """
+
     file_id: str
     object_id: str
+    creation_date: UTCDatetime = Field(default_factory=now_as_utc)
 
 
 class UploadReceivedFingerprint(BaseModel):
