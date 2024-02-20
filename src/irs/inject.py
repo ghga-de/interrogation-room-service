@@ -31,6 +31,7 @@ from irs.adapters.outbound.dao import (
 from irs.adapters.outbound.event_pub import EventPublisher
 from irs.config import Config
 from irs.core.interrogator import Interrogator
+from irs.core.storage_inspector import StagingInspector
 from irs.ports.inbound.interrogator import InterrogatorPort
 
 
@@ -88,3 +89,18 @@ async def prepare_event_subscriber(
             config=config, translator=event_sub_translator
         ) as event_subscriber:
             yield event_subscriber
+
+
+@asynccontextmanager
+async def prepare_storage_inspector(*, config: Config):
+    """Alternative to prepare_core for storage inspection CLI command without Kafka."""
+    object_storages = S3ObjectStorages(config=config)
+    dao_factory = MongoDbDaoFactory(config=config)
+    staging_object_dao = await StagingObjectDaoConstructor.construct(
+        dao_factory=dao_factory
+    )
+    yield StagingInspector(
+        config=config,
+        staging_object_dao=staging_object_dao,
+        object_storages=object_storages,
+    )

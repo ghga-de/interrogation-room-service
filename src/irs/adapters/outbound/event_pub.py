@@ -28,21 +28,21 @@ class EventPubTanslatorConfig(BaseSettings):
     """Config for publishing file upload-related events."""
 
     interrogation_topic: str = Field(
-        ...,
+        default=...,
         description=(
             "Name of the topic used for events informing about the outcome of file validations."
         ),
         examples=["file_interrogation"],
     )
     interrogation_success_type: str = Field(
-        ...,
+        default=...,
         description=(
             "The type used for events informing about the success of a file validation."
         ),
         examples=["file_validation_success"],
     )
     interrogation_failure_type: str = Field(
-        ...,
+        default=...,
         description=(
             "The type used for events informing about the failure of a file validation."
         ),

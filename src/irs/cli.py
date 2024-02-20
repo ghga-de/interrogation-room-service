@@ -15,7 +15,22 @@
 
 """Entrypoint of the package"""
 
-from irs.cli import cli
+import asyncio
 
-if __name__ == "__main__":
-    cli()
+import typer
+
+from irs.main import check_staging_buckets, consume_events
+
+cli = typer.Typer()
+
+
+@cli.command(name="consume-events")
+def sync_consume_events():
+    """Synchronous entrypoint for Docker container, etc."""
+    asyncio.run(consume_events())
+
+
+@cli.command(name="check-staging-buckets")
+def sync_check_inbox_buckets():
+    """Run a job to check all objects no longer needed have been deleted"""
+    asyncio.run(check_staging_buckets())

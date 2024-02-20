@@ -12,10 +12,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+#
+"""Interfaces for periodic storage maintenance."""
 
-"""Entrypoint of the package"""
+from abc import ABC, abstractmethod
 
-from irs.cli import cli
 
-if __name__ == "__main__":
-    cli()
+class StorageInspectorPort(ABC):
+    """Interface for periodically checking storage buckets for stale files."""
+
+    @abstractmethod
+    async def check_buckets(self):
+        """Check objects in all buckets configured for the service."""

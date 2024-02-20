@@ -20,5 +20,7 @@ interrogation_failure_type: file_validation_failure
 upload_received_event_topic: file_uploads
 upload_received_event_type: file_upload_received
 
+object_stale_after_minutes: 1440
+
 db_connection_str: "mongodb://mongodb:27017"
 db_name: "dev_db"

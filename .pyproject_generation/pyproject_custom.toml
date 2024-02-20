@@ -13,4 +13,4 @@ dependencies = [
 Repository = "https://github.com/ghga-de/interrogation-room-service"
 
 [project.scripts]
-irs = "irs.__main__:run"
+irs = "irs.__main__:cli"

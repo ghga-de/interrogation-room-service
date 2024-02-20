@@ -17,7 +17,7 @@
 from hexkit.log import configure_logging
 
 from irs.config import Config
-from irs.inject import prepare_event_subscriber
+from irs.inject import prepare_event_subscriber, prepare_storage_inspector
 
 
 async def consume_events(run_forever: bool = True):
@@ -27,3 +27,16 @@ async def consume_events(run_forever: bool = True):
 
     async with prepare_event_subscriber(config=config) as event_subscriber:
         await event_subscriber.run(forever=run_forever)
+
+
+async def check_staging_buckets():
+    """Run a job to inspect all configured storage buckets for stale objects.
+
+    For now this only logs objects that should no longer remain in their respective bucket,
+    but have not been removed by the mechanisms in place.
+    """
+    config = Config()  # type: ignore [call-arg]
+    configure_logging(config=config)
+
+    async with prepare_storage_inspector(config=config) as staging_inspector:
+        await staging_inspector.check_buckets()

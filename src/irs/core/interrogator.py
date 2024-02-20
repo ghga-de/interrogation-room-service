@@ -24,7 +24,7 @@ from logging import getLogger
 from crypt4gh.lib import CIPHER_SEGMENT_SIZE, CryptoError, decrypt_block
 from ghga_event_schemas import pydantic_ as event_schemas
 from ghga_service_commons.utils.multinode_storage import S3ObjectStorages
-from hexkit.protocols.dao import ResourceNotFoundError
+from hexkit.protocols.dao import ResourceAlreadyExistsError, ResourceNotFoundError
 from hexkit.utils import calc_part_size
 from nacl.bindings import crypto_aead_chacha20poly1305_ietf_encrypt
 
@@ -42,7 +42,7 @@ log = getLogger(__name__)
 
 
 class CipherSegmentProcessor:
-    """Process inbox file for checksum generation and reencryption"""
+    """Process inbox file for checksum generation and re-encryption"""
 
     def __init__(  # noqa: PLR0913
         self,
@@ -237,9 +237,13 @@ class Interrogator(InterrogatorPort):
                 payload.s3_endpoint_alias
             )
         except KeyError as error:
-            raise ValueError(
+            storage_not_configured = ValueError(
                 f"Storage alias not configured: {payload.s3_endpoint_alias}"
-            ) from error
+            )
+            log.critical(
+                storage_not_configured, extra={"alias": payload.s3_endpoint_alias}
+            )
+            raise storage_not_configured from error
 
         fingerprint = UploadReceivedFingerprint.generate(payload=payload)
 
@@ -309,7 +313,11 @@ class Interrogator(InterrogatorPort):
 
         # save mapping for stale object checking/removal
         staging_object = StagingObject(file_id=payload.file_id, object_id=object_id)
-        await self._staging_object_dao.insert(dto=staging_object)
+        try:
+            await self._staging_object_dao.insert(dto=staging_object)
+        except ResourceAlreadyExistsError as error:
+            log.error(error)
+            raise
 
         # handle publishing both outcomes
         if payload.expected_decrypted_sha256 == content_checksum_sha256:
@@ -327,6 +335,8 @@ class Interrogator(InterrogatorPort):
                 decrypted_size=payload.decrypted_size,
                 s3_endpoint_alias=payload.s3_endpoint_alias,
             )
+            # Everything has been processed successfully, add fingerprint to db for lookup
+            await self._fingerprint_dao.insert(fingerprint)
         else:
             await self._event_publisher.publish_validation_failure(
                 file_id=payload.file_id,
@@ -335,9 +345,6 @@ class Interrogator(InterrogatorPort):
                 upload_date=payload.upload_date,
                 s3_endpoint_alias=payload.s3_endpoint_alias,
             )
-
-        # Everything has been processed successfully, add fingerprint to db for lookup
-        await self._fingerprint_dao.insert(fingerprint)
 
     async def remove_staging_object(
         self, *, payload: event_schemas.FileInternallyRegistered
@@ -351,15 +358,19 @@ class Interrogator(InterrogatorPort):
                 storage_alias
             )
         except KeyError as error:
-            raise ValueError(
+            storage_not_configured = ValueError(
                 f"Storage alias not configured: {payload.s3_endpoint_alias}"
-            ) from error
+            )
+            log.critical(
+                storage_not_configured, extra={"alias": payload.s3_endpoint_alias}
+            )
+            raise storage_not_configured from error
 
         try:
             staging_object = await self._staging_object_dao.get_by_id(id_=file_id)
-        except ResourceNotFoundError as error:
+        except ResourceNotFoundError:
             log.warning("No staging object for file '%s'.", file_id)
-            raise error
+            return
 
         object_exists = await object_storage.does_object_exist(
             bucket_id=staging_bucket_id, object_id=staging_object.object_id
@@ -373,13 +384,10 @@ class Interrogator(InterrogatorPort):
                 storage_alias,
             )
             # should this raise?
+            return
 
+        # these have been checked before, i.e. should not raise
         await object_storage.delete_object(
             bucket_id=staging_bucket_id, object_id=staging_object.object_id
         )
-
-        try:
-            await self._staging_object_dao.delete(id_=file_id)
-        except ResourceNotFoundError as error:
-            log.critical("What?")
-            raise error
+        await self._staging_object_dao.delete(id_=file_id)

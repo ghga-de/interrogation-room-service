@@ -23,6 +23,7 @@ from pydantic import Field
 
 from irs.adapters.inbound.event_sub import EventSubTanslatorConfig
 from irs.adapters.outbound.event_pub import EventPubTanslatorConfig
+from irs.core.storage_inspector import StorageInspectorConfig
 
 
 @config_from_yaml(prefix="irs")
@@ -33,6 +34,7 @@ class Config(
     EventSubTanslatorConfig,
     EventPubTanslatorConfig,
     LoggingConfig,
+    StorageInspectorConfig,
 ):
     """Config parameters and their defaults."""
 
