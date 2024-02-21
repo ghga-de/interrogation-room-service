@@ -34,7 +34,10 @@ from hexkit.providers.akafka.testutils import ExpectedEvent
 from hexkit.providers.s3.testutils import FileObject
 from hexkit.utils import calc_part_size
 
-from irs.adapters.outbound.dao import FingerprintDaoConstructor
+from irs.adapters.outbound.dao import (
+    FingerprintDaoConstructor,
+    StagingObjectDaoConstructor,
+)
 from irs.core.models import UploadReceivedFingerprint
 from tests.fixtures.config import Config
 from tests.fixtures.joint import (
@@ -204,15 +207,22 @@ async def test_failure_event(
         ]
         assert recorded_events[0].payload == expected_event_out.payload
 
+        # check staging object dao state
+        staging_object_dao = await StagingObjectDaoConstructor.construct(
+            dao_factory=joint_fixture.mongodb.dao_factory
+        )
+        with pytest.raises(ResourceNotFoundError):
+            await staging_object_dao.get_by_id(id_=data.file_id)
+
         # check fingerprint is not created for unsuccessful processing
-        mongo_dao = await FingerprintDaoConstructor.construct(
+        fingerprint_dao = await FingerprintDaoConstructor.construct(
             dao_factory=joint_fixture.mongodb.dao_factory
         )
         seen_event = event_schemas.FileUploadReceived(**payload_in)
         fingerprint = UploadReceivedFingerprint.generate(seen_event)
 
         with pytest.raises(ResourceNotFoundError):
-            await mongo_dao.get_by_id(fingerprint.checksum)
+            await fingerprint_dao.get_by_id(fingerprint.checksum)
 
 
 @pytest.mark.asyncio(scope="session")
@@ -286,6 +296,16 @@ async def test_success_event(
         expected_event_out.payload["object_id"] = event.payload["object_id"]
         for key in payload_out:
             assert event.payload[key] == expected_event_out.payload[key]
+
+        # check staging object dao state and ensure, object actually exists in storage
+        staging_object_dao = await StagingObjectDaoConstructor.construct(
+            dao_factory=joint_fixture.mongodb.dao_factory
+        )
+        staging_object = await staging_object_dao.get_by_id(id_=data.file_id)
+
+        assert await s3.storage.does_object_exist(
+            bucket_id=STAGING_BUCKET_ID, object_id=staging_object.object_id
+        )
 
         # check event fingerprint is stored in DB
         mongo_dao = await FingerprintDaoConstructor.construct(
