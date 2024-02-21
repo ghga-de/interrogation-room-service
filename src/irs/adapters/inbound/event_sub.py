@@ -66,9 +66,11 @@ class EventSubTranslator(EventSubscriberProtocol):
         self._interrogator = interrogator
 
         self.topics_of_interest = [
+            config.file_registered_event_topic,
             config.upload_received_event_topic,
         ]
         self.types_of_interest = [
+            config.file_registered_event_type,
             config.upload_received_event_type,
         ]
 

@@ -17,13 +17,13 @@ We recommend using the provided Docker container.
 
 A pre-build version is available at [docker hub](https://hub.docker.com/repository/docker/ghga/interrogation-room-service):
 ```bash
-docker pull ghga/interrogation-room-service:1.2.0
+docker pull ghga/interrogation-room-service:2.0.0
 ```
 
 Or you can build the container yourself from the [`./Dockerfile`](./Dockerfile):
 ```bash
 # Execute in the repo's root dir:
-docker build -t ghga/interrogation-room-service:1.2.0 .
+docker build -t ghga/interrogation-room-service:2.0.0 .
 ```
 
 For production-ready deployment, we recommend using Kubernetes, however,
@@ -31,7 +31,7 @@ for simple use cases, you could execute the service using docker
 on a single server:
 ```bash
 # The entrypoint is preconfigured:
-docker run -p 8080:8080 ghga/interrogation-room-service:1.2.0 --help
+docker run -p 8080:8080 ghga/interrogation-room-service:2.0.0 --help
 ```
 
 If you prefer not to use containers, you may install the service from source:
@@ -48,6 +48,8 @@ irs --help
 ### Parameters
 
 The service requires the following configuration parameters:
+- **`object_stale_after_minutes`** *(integer)*: Amount of time in minutes after which an object in the staging bucket is considered stale. If an object continues existing after this point in time, this is an indication, that something might have gone wrong downstream.
+
 - **`log_level`** *(string)*: The minimum log level to capture. Must be one of: `["CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG", "TRACE"]`. Default: `"INFO"`.
 
 - **`service_name`** *(string)*: Default: `"irs"`.
@@ -110,6 +112,26 @@ The service requires the following configuration parameters:
 
   ```json
   "file_validation_failure"
+  ```
+
+
+- **`file_registered_event_topic`** *(string)*: Name of the topic used for events indicating that a new file has been internally registered.
+
+
+  Examples:
+
+  ```json
+  "internal_file_registry"
+  ```
+
+
+- **`file_registered_event_type`** *(string)*: The type used for events indicating that a new file has been internally registered.
+
+
+  Examples:
+
+  ```json
+  "file_registered"
   ```
 
 

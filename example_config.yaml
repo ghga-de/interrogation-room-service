@@ -1,6 +1,8 @@
 db_connection_str: '**********'
 db_name: dev_db
 ekss_base_url: http://ekss:8080/
+file_registered_event_topic: internal_file_registry
+file_registered_event_type: file_registered
 generate_correlation_id: true
 interrogation_failure_type: file_validation_failure
 interrogation_success_type: file_validation_success
@@ -14,6 +16,7 @@ kafka_ssl_keyfile: ''
 kafka_ssl_password: ''
 log_format: null
 log_level: INFO
+object_stale_after_minutes: 1440
 object_storages:
   test:
     bucket: staging

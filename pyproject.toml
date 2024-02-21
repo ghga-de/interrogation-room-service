@@ -22,7 +22,7 @@ classifiers = [
     "Intended Audience :: Developers",
 ]
 name = "irs"
-version = "1.2.0"
+version = "2.0.0"
 description = "Interrogation Room Service"
 dependencies = [
     "ghga-service-commons[api]>=3.0.0",
@@ -38,7 +38,7 @@ text = "Apache 2.0"
 Repository = "https://github.com/ghga-de/interrogation-room-service"
 
 [project.scripts]
-irs = "irs.__main__:run"
+irs = "irs.__main__:cli"
 
 [tool.setuptools.packages.find]
 where = [
