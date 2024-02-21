@@ -29,6 +29,7 @@ import pytest
 from ghga_event_schemas import pydantic_ as event_schemas
 from ghga_service_commons.utils.temp_files import big_temp_file
 from ghga_service_commons.utils.utc_dates import now_as_utc
+from hexkit.protocols.dao import ResourceNotFoundError
 from hexkit.providers.akafka.testutils import ExpectedEvent
 from hexkit.providers.s3.testutils import FileObject
 from hexkit.utils import calc_part_size
@@ -202,6 +203,16 @@ async def test_failure_event(
             "object_id"
         ]
         assert recorded_events[0].payload == expected_event_out.payload
+
+        # check fingerprint is not created for unsuccessful processing
+        mongo_dao = await FingerprintDaoConstructor.construct(
+            dao_factory=joint_fixture.mongodb.dao_factory
+        )
+        seen_event = event_schemas.FileUploadReceived(**payload_in)
+        fingerprint = UploadReceivedFingerprint.generate(seen_event)
+
+        with pytest.raises(ResourceNotFoundError):
+            await mongo_dao.get_by_id(fingerprint.checksum)
 
 
 @pytest.mark.asyncio(scope="session")

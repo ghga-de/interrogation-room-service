@@ -15,197 +15,26 @@
 """A service for validating uploaded files"""
 
 import contextlib
-import hashlib
-import math
-import os
 import uuid
 from logging import getLogger
 
-from crypt4gh.lib import CIPHER_SEGMENT_SIZE, CryptoError, decrypt_block
+from crypt4gh.lib import CryptoError
 from ghga_event_schemas import pydantic_ as event_schemas
 from ghga_service_commons.utils.multinode_storage import S3ObjectStorages
-from hexkit.protocols.dao import ResourceAlreadyExistsError, ResourceNotFoundError
+from hexkit.protocols.dao import ResourceNotFoundError
 from hexkit.utils import calc_part_size
-from nacl.bindings import crypto_aead_chacha20poly1305_ietf_encrypt
 
 from irs.adapters.outbound.http.api_calls import call_eks_api
 from irs.adapters.outbound.http.exceptions import KnownError
 from irs.config import CONFIG
-from irs.core.exceptions import LastSegmentCorruptedError, SegmentCorruptedError
 from irs.core.models import StagingObject, UploadReceivedFingerprint
+from irs.core.segment_processor import CipherSegmentProcessor
 from irs.core.staging_handler import StagingHandler, StorageIds
 from irs.ports.inbound.interrogator import InterrogatorPort
 from irs.ports.outbound.dao import FingerprintDaoPort, StagingObjectDaoPort
 from irs.ports.outbound.event_pub import EventPublisherPort
 
 log = getLogger(__name__)
-
-
-class CipherSegmentProcessor:
-    """Process inbox file for checksum generation and re-encryption"""
-
-    def __init__(  # noqa: PLR0913
-        self,
-        *,
-        secret: bytes,
-        new_secret: bytes,
-        part_size: int,
-        offset: int,
-        object_storage_handler: StagingHandler,
-    ) -> None:
-        self.object_storage_handler = object_storage_handler
-        self.secret = secret
-        self.new_secret = new_secret
-        self.part_size = part_size
-        self.offset = offset
-
-        # hashsum buffers
-        self.total_sha256_checksum = hashlib.sha256()
-        self.encrypted_md5_part_checksums: list[str] = []
-        self.encrypted_sha256_part_checksums: list[str] = []
-
-        # counter for uploading reencrypted file to staging area
-        self.reencrypted_part_number = 0
-
-        # buffers to accumulate ciphersegments up to part size
-        self.partial_ciphersegment = b""
-        self.reencryption_buffer = b""
-
-    async def process(self):
-        """Delegate processing and return checksums"""
-        # start multipart upload for staging multipart upload
-        await self.object_storage_handler.init_staging()
-
-        await self._process_parts()
-
-        # finish staging the re-encrypted file
-        await self.object_storage_handler.complete_staging(
-            parts=self.reencrypted_part_number
-        )
-
-        return (
-            self.encrypted_md5_part_checksums,
-            self.encrypted_sha256_part_checksums,
-            self.total_sha256_checksum.hexdigest(),
-        )
-
-    def _encrypt_segment(self, *, data: bytes, key: bytes) -> bytes:
-        """
-        Utility function to generate a nonce, encrypt data with Chacha20,
-        and authenticate it with Poly1305.
-        """
-        nonce = os.urandom(12)
-        encrypted_data = crypto_aead_chacha20poly1305_ietf_encrypt(
-            data, None, nonce, key
-        )  # no aad
-
-        return nonce + encrypted_data
-
-    def _get_part_checksums(self, *, file_part: bytes):
-        """Compute md5 and sha256 for encrypted part"""
-        return (
-            hashlib.md5(file_part, usedforsecurity=False).hexdigest(),
-            hashlib.sha256(file_part).hexdigest(),
-        )
-
-    def _get_segments(self, *, file_part: bytes) -> tuple[list[bytes], bytes]:
-        """Chunk file part into decryptable segments"""
-        num_segments = len(file_part) / CIPHER_SEGMENT_SIZE
-        full_segments = int(num_segments)
-        segments = [
-            file_part[i * CIPHER_SEGMENT_SIZE : (i + 1) * CIPHER_SEGMENT_SIZE]
-            for i in range(full_segments)
-        ]
-
-        # check if we have a remainder of bytes that we need to handle,
-        # i.e. non-matching boundaries between part and cipher segment size
-        incomplete_segment = b""
-        partial_segment_idx = math.ceil(num_segments)
-        if partial_segment_idx != full_segments:
-            incomplete_segment = file_part[full_segments * CIPHER_SEGMENT_SIZE :]
-        return segments, incomplete_segment
-
-    async def _process_parts(self):
-        """High-level part processing, chunking into ciphersegments"""
-        incomplete_ciphersegment = b""
-
-        async for part in self.object_storage_handler.retrieve_parts(
-            offset=self.offset,
-        ):
-            if self.partial_ciphersegment:
-                part = self.partial_ciphersegment + part
-            ciphersegments, incomplete_ciphersegment = self._get_segments(
-                file_part=part
-            )
-            await self._process_segments(ciphersegments=ciphersegments)
-            self.partial_ciphersegment = incomplete_ciphersegment
-
-        await self._process_remaining(incomplete_ciphersegment=incomplete_ciphersegment)
-
-    async def _process_segments(self, *, ciphersegments: list[bytes]):
-        """Process complete ciphersegments"""
-        for ciphersegment in ciphersegments:
-            try:
-                decrypted = decrypt_block(
-                    ciphersegment=ciphersegment, session_keys=[self.secret]
-                )
-            except Exception as exc:
-                raise SegmentCorruptedError(
-                    part_number=self.reencrypted_part_number
-                ) from exc
-            self.total_sha256_checksum.update(decrypted)
-
-            # reencrypt using the new secret
-            self.reencryption_buffer += self._encrypt_segment(
-                data=decrypted, key=self.new_secret
-            )
-
-        if len(self.reencryption_buffer) >= self.part_size:
-            await self._reencrypt_and_stage()
-
-    async def _process_remaining(self, *, incomplete_ciphersegment: bytes):
-        """Process last, possibly incomplete ciphersegment"""
-        if incomplete_ciphersegment:
-            try:
-                decrypted = decrypt_block(
-                    ciphersegment=incomplete_ciphersegment, session_keys=[self.secret]
-                )
-            # could also depend on PyNaCl directly for the exact exception
-            except Exception as exc:
-                raise LastSegmentCorruptedError() from exc
-            self.total_sha256_checksum.update(decrypted)
-
-            # encrypt the last segment
-            self.reencryption_buffer += self._encrypt_segment(
-                data=decrypted, key=self.new_secret
-            )
-
-        if len(self.reencryption_buffer) > self.part_size:
-            await self._reencrypt_and_stage()
-
-        await self._reencrypt_and_stage(consume_remainder=True)
-
-    async def _reencrypt_and_stage(self, *, consume_remainder: bool = False):
-        """Reencrypt, calculate checksums and stage file part"""
-        if consume_remainder:
-            part = self.reencryption_buffer
-        else:
-            part = self.reencryption_buffer[: self.part_size]
-
-        # calculate re-encrypted checksums
-        md5sum, sha256sum = self._get_part_checksums(file_part=part)
-        self.encrypted_md5_part_checksums.append(md5sum)
-        self.encrypted_sha256_part_checksums.append(sha256sum)
-
-        self.reencrypted_part_number += 1
-        await self.object_storage_handler.stage_part(
-            data=part,
-            part_number=self.reencrypted_part_number,
-        )
-
-        if not consume_remainder:
-            rest_len = len(self.reencryption_buffer) - self.part_size
-            self.reencryption_buffer = self.reencryption_buffer[-rest_len:]
 
 
 class Interrogator(InterrogatorPort):
@@ -301,6 +130,8 @@ class Interrogator(InterrogatorPort):
                 content_checksum_sha256,
             ) = await cipher_segment_processor.process()
         except (CryptoError, KnownError, ValueError) as exc:
+            # remove data for ongoing upload in case of failure
+            await object_storage_handler.abort_staging()
             await self._event_publisher.publish_validation_failure(
                 file_id=payload.file_id,
                 object_id=object_id,
@@ -310,14 +141,6 @@ class Interrogator(InterrogatorPort):
                 s3_endpoint_alias=payload.s3_endpoint_alias,
             )
             return
-
-        # save mapping for stale object checking/removal
-        staging_object = StagingObject(file_id=payload.file_id, object_id=object_id)
-        try:
-            await self._staging_object_dao.insert(dto=staging_object)
-        except ResourceAlreadyExistsError as error:
-            log.error(error)
-            raise
 
         # handle publishing both outcomes
         if payload.expected_decrypted_sha256 == content_checksum_sha256:
@@ -335,9 +158,14 @@ class Interrogator(InterrogatorPort):
                 decrypted_size=payload.decrypted_size,
                 s3_endpoint_alias=payload.s3_endpoint_alias,
             )
+            # save mapping for stale object check/removal
+            staging_object = StagingObject(file_id=payload.file_id, object_id=object_id)
+            await self._staging_object_dao.insert(dto=staging_object)
             # Everything has been processed successfully, add fingerprint to db for lookup
             await self._fingerprint_dao.insert(fingerprint)
         else:
+            # remove invalid object from its staging bucket
+            await object_storage_handler.delete_from_staging()
             await self._event_publisher.publish_validation_failure(
                 file_id=payload.file_id,
                 object_id=object_id,
@@ -369,7 +197,7 @@ class Interrogator(InterrogatorPort):
         try:
             staging_object = await self._staging_object_dao.get_by_id(id_=file_id)
         except ResourceNotFoundError:
-            log.warning("No staging object for file '%s'.", file_id)
+            log.warning("No object in staging bucket for file '%s'.", file_id)
             return
 
         object_exists = await object_storage.does_object_exist(
@@ -377,14 +205,12 @@ class Interrogator(InterrogatorPort):
         )
 
         if not object_exists:
-            log.critical(
-                "Object '%s' no longer in staging bucket '%s' of storage '%s'.",
-                staging_object.object_id,
-                staging_bucket_id,
-                storage_alias,
+            out_of_sync_error = ValueError(
+                f"Object '{staging_object.object_id}' unexpectedly not in staging bucket"
+                + f" '{staging_bucket_id}' of storage '{storage_alias}'."
             )
-            # should this raise?
-            return
+            log.critical(out_of_sync_error)
+            raise out_of_sync_error
 
         # these have been checked before, i.e. should not raise
         await object_storage.delete_object(
