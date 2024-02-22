@@ -56,9 +56,14 @@ class StagingInspector(StorageInspectorPort):
 
     async def check_buckets(self):
         """Check objects in all buckets configured for the service."""
-        for storage_alias in self._object_storages._config.object_storages:
-            log.debug("Checking for stale objects in storage '%s'", storage_alias)
+        log.debug("Checking for stale objects.")
 
+        async for staging_object in self._staging_object_dao.find_all(mapping={}):
+            stale_as_of = now_as_utc() - timedelta(
+                minutes=self._config.object_stale_after_minutes
+            )
+
+            storage_alias = staging_object.storage_alias
             try:
                 bucket_id, _ = self._object_storages.for_alias(
                     endpoint_alias=storage_alias
@@ -70,21 +75,17 @@ class StagingInspector(StorageInspectorPort):
                 log.critical(storage_not_configured, extra={"alias": storage_alias})
                 raise storage_not_configured from error
 
-            async for staging_object in self._staging_object_dao.find_all(mapping={}):
-                stale_as_of = now_as_utc() - timedelta(
-                    minutes=self._config.object_stale_after_minutes
-                )
-                if staging_object.creation_date <= stale_as_of:
-                    # only log for now, but this points to an underlying issue
-                    extra = {
-                        "object_id": staging_object.object_id,
-                        "file_id": staging_object.file_id,
-                        "bucket_id": bucket_id,
-                        "storage_alias": storage_alias,
-                    }
+            if staging_object.creation_date <= stale_as_of:
+                # only log for now, but this points to an underlying issue
+                extra = {
+                    "object_id": staging_object.object_id,
+                    "file_id": staging_object.file_id,
+                    "bucket_id": bucket_id,
+                    "storage_alias": storage_alias,
+                }
 
-                    log.error(
-                        "Stale object '%s' found for file '%s' in bucket '%s' of storage '%s'.",
-                        *extra.values(),
-                        extra=extra,
-                    )
+                log.error(
+                    "Stale object '%s' found for file '%s' in bucket '%s' of storage '%s'.",
+                    *extra.values(),
+                    extra=extra,
+                )

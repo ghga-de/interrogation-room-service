@@ -159,7 +159,11 @@ class Interrogator(InterrogatorPort):
                 s3_endpoint_alias=payload.s3_endpoint_alias,
             )
             # save mapping for stale object check/removal
-            staging_object = StagingObject(file_id=payload.file_id, object_id=object_id)
+            staging_object = StagingObject(
+                file_id=payload.file_id,
+                object_id=object_id,
+                storage_alias=payload.s3_endpoint_alias,
+            )
             await self._staging_object_dao.insert(dto=staging_object)
             # Everything has been processed successfully, add fingerprint to db for lookup
             await self._fingerprint_dao.insert(fingerprint)

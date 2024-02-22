@@ -37,6 +37,7 @@ class StagingObject(BaseModel):
 
     file_id: str
     object_id: str
+    storage_alias: str
     creation_date: UTCDatetime = Field(default_factory=now_as_utc)
 
 

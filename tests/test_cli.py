@@ -24,6 +24,7 @@ from irs.adapters.outbound.dao import StagingObjectDaoConstructor
 from irs.core.models import StagingObject
 from irs.inject import prepare_storage_inspector
 from tests.fixtures.joint import (
+    STAGING_BUCKET_ID,
     JointFixture,
     joint_fixture,  # noqa: F401
     kafka_fixture,  # noqa: F401
@@ -35,7 +36,7 @@ from tests.fixtures.joint import (
 from tests.fixtures.test_files import create_test_file
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio(scope="session")
 async def test_staging_inspector(caplog, joint_fixture: JointFixture):  # noqa: F811
     """Check storage inspector functionality."""
     s3 = joint_fixture.s3
@@ -54,10 +55,14 @@ async def test_staging_inspector(caplog, joint_fixture: JointFixture):  # noqa: 
 
     # populate staging object db
     staging_object_1 = StagingObject(
-        file_id=file_1.file_id, object_id=file_1.file_object.object_id
+        file_id=file_1.file_id,
+        object_id=file_1.file_object.object_id,
+        storage_alias=joint_fixture.endpoint_aliases.node1,
     )
     staging_object_2 = StagingObject(
-        file_id=file_2.file_id, object_id=file_2.file_object.object_id
+        file_id=file_2.file_id,
+        object_id=file_2.file_object.object_id,
+        storage_alias=joint_fixture.endpoint_aliases.node2,
     )
 
     # modify second object to be recognized as stale
@@ -83,7 +88,6 @@ async def test_staging_inspector(caplog, joint_fixture: JointFixture):  # noqa: 
 
     assert len(caplog.messages) == 1
     assert (
-        f"Stale object '{file_2.file_object.object_id}' found for file '{file_2.file_id}'"
-        + f" in bucket '{file_2.file_object.bucket_id}' of storage '{joint_fixture.endpoint_aliases.node1}'."
+        f"Stale object '{file_2.file_object.object_id}' found for file '{file_2.file_id}' in bucket '{STAGING_BUCKET_ID}' of storage '{joint_fixture.endpoint_aliases.node2}'."
         in caplog.messages
     )
