@@ -54,7 +54,7 @@ class Interrogator(InterrogatorPort):
         self._staging_object_dao = staging_object_dao
         self._object_storages = object_storages
 
-    async def interrogate(self, *, payload: event_schemas.FileUploadReceived):
+    async def interrogate(self, *, payload: event_schemas.FileUploadReceived) -> None:
         """
         Forwards first file part to encryption key store, retrieves file encryption
         secret(s) (K_data), decrypts file and computes checksums. The object and bucket
@@ -178,24 +178,17 @@ class Interrogator(InterrogatorPort):
                 s3_endpoint_alias=payload.s3_endpoint_alias,
             )
 
-    async def remove_staging_object(
-        self, *, payload: event_schemas.FileInternallyRegistered
-    ):
+    async def remove_staging_object(self, *, file_id: str, storage_alias: str) -> None:
         """Remove transient object from staging once copy to permanent storage has been confirmed."""
-        file_id = payload.file_id
-        storage_alias = payload.s3_endpoint_alias
-
         try:
             staging_bucket_id, object_storage = self._object_storages.for_alias(
                 storage_alias
             )
         except KeyError as error:
             storage_not_configured = ValueError(
-                f"Storage alias not configured: {payload.s3_endpoint_alias}"
+                f"Storage alias not configured: {storage_alias}"
             )
-            log.critical(
-                storage_not_configured, extra={"alias": payload.s3_endpoint_alias}
-            )
+            log.critical(storage_not_configured, extra={"alias": storage_alias})
             raise storage_not_configured from error
 
         try:

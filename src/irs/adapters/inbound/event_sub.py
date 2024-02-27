@@ -114,4 +114,7 @@ class EventSubTranslator(EventSubscriberProtocol):
             schema=event_schemas.FileInternallyRegistered,
         )
 
-        await self._interrogator.remove_staging_object(payload=validated_payload)
+        await self._interrogator.remove_staging_object(
+            file_id=validated_payload.file_id,
+            storage_alias=validated_payload.s3_endpoint_alias,
+        )

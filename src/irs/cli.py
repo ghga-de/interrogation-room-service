@@ -31,6 +31,6 @@ def sync_consume_events():
 
 
 @cli.command(name="check-staging-buckets")
-def sync_check_inbox_buckets():
+def sync_check_staging_buckets():
     """Run a job to check all objects no longer needed have been deleted"""
     asyncio.run(check_staging_buckets())

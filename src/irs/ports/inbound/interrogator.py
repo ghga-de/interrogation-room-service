@@ -24,7 +24,7 @@ class InterrogatorPort(ABC):
     """The interface of a service for validating the content of encrypted files."""
 
     @abstractmethod
-    async def interrogate(self, *, payload: event_schemas.FileUploadReceived):
+    async def interrogate(self, *, payload: event_schemas.FileUploadReceived) -> None:
         """
         Forwards first file part to encryption key store, retrieves file encryption
         secret(s) (K_data), decrypts file and computes checksums
@@ -32,8 +32,6 @@ class InterrogatorPort(ABC):
         ...
 
     @abstractmethod
-    async def remove_staging_object(
-        self, *, payload: event_schemas.FileInternallyRegistered
-    ):
+    async def remove_staging_object(self, *, file_id: str, storage_alias: str) -> None:
         """Remove transient object from staging once copy to permanent storage has been confirmed"""
         ...
