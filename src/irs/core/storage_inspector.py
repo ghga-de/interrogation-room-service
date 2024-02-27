@@ -20,6 +20,7 @@ from datetime import timedelta
 
 from ghga_service_commons.utils.multinode_storage import S3ObjectStorages
 from ghga_service_commons.utils.utc_dates import now_as_utc
+from hexkit.protocols.dao import NoHitsFoundError
 from pydantic import Field
 from pydantic_settings import BaseSettings
 
@@ -56,36 +57,49 @@ class StagingInspector(StorageInspectorPort):
 
     async def check_buckets(self):
         """Check objects in all buckets configured for the service."""
-        log.debug("Checking for stale objects.")
+        for storage_alias in self._object_storages._config.object_storages:
+            log.info(f"Checking for stale objects in storage {storage_alias}.")
 
-        async for staging_object in self._staging_object_dao.find_all(mapping={}):
-            stale_as_of = now_as_utc() - timedelta(
-                minutes=self._config.object_stale_after_minutes
-            )
+            bucket_id, object_storage = self._object_storages.for_alias(storage_alias)
 
-            storage_alias = staging_object.storage_alias
-            try:
-                bucket_id, _ = self._object_storages.for_alias(
-                    endpoint_alias=storage_alias
+            for object_id in await object_storage.list_all_object_ids(bucket_id):
+                try:
+                    staging_object = await self._staging_object_dao.find_one(
+                        mapping={"object_id": object_id}
+                    )
+                except NoHitsFoundError:
+                    extra = {
+                        "object_id": object_id,
+                        "bucket_id": bucket_id,
+                        "storage_alias": storage_alias,
+                    }
+
+                    log.error(
+                        "Object '%s' with no corresponding DB entry found in bucket '%s'"
+                        + " of storage '%s'.",
+                        *extra.values(),
+                        extra=extra,
+                    )
+                    continue
+
+                if staging_object.storage_alias != storage_alias:
+                    # can't look up bases on two fields, skip for now and log later
+                    continue
+
+                stale_as_of = now_as_utc() - timedelta(
+                    minutes=self._config.object_stale_after_minutes
                 )
-            except KeyError as error:
-                storage_not_configured = ValueError(
-                    f"Storage alias not configured: {storage_alias}"
-                )
-                log.critical(storage_not_configured, extra={"alias": storage_alias})
-                raise storage_not_configured from error
+                if staging_object.creation_date <= stale_as_of:
+                    # only log for now, but this points to an underlying issue
+                    extra = {
+                        "object_id": object_id,
+                        "file_id": staging_object.file_id,
+                        "bucket_id": bucket_id,
+                        "storage_alias": storage_alias,
+                    }
 
-            if staging_object.creation_date <= stale_as_of:
-                # only log for now, but this points to an underlying issue
-                extra = {
-                    "object_id": staging_object.object_id,
-                    "file_id": staging_object.file_id,
-                    "bucket_id": bucket_id,
-                    "storage_alias": storage_alias,
-                }
-
-                log.error(
-                    "Stale object '%s' found for file '%s' in bucket '%s' of storage '%s'.",
-                    *extra.values(),
-                    extra=extra,
-                )
+                    log.error(
+                        "Stale object '%s' found for file '%s' in bucket '%s' of storage '%s'.",
+                        *extra.values(),
+                        extra=extra,
+                    )

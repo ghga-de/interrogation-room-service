@@ -28,7 +28,7 @@ from ghga_service_commons.utils.temp_files import big_temp_file
 from ghga_service_commons.utils.utc_dates import now_as_utc
 from hexkit.providers.s3.testutils import FileObject
 
-from tests.fixtures.joint import FILE_SIZE, INBOX_BUCKET_ID, S3Fixture
+from tests.fixtures.joint import FILE_SIZE, S3Fixture
 
 
 @dataclass
@@ -44,7 +44,9 @@ class EncryptedData:
     offset: int
 
 
-async def create_test_file(private_key: bytes, public_key: bytes, s3: S3Fixture):
+async def create_test_file(
+    bucket_id: str, private_key: bytes, public_key: bytes, s3: S3Fixture
+):
     """Generate encrypted random test data using a specified keypair"""
     sys.set_int_max_str_digits(FILE_SIZE)
     with big_temp_file(FILE_SIZE) as data:
@@ -74,7 +76,7 @@ async def create_test_file(private_key: bytes, public_key: bytes, s3: S3Fixture)
             file_id = f"F{object_id}"
             file_object = FileObject(
                 file_path=Path(encrypted_file.name),
-                bucket_id=INBOX_BUCKET_ID,
+                bucket_id=bucket_id,
                 object_id=object_id,
             )
             await s3.populate_file_objects([file_object])

@@ -92,6 +92,7 @@ async def test_failure_event(
         (joint_fixture.second_s3, joint_fixture.endpoint_aliases.node2),
     ):
         data = await create_test_file(
+            bucket_id=INBOX_BUCKET_ID,
             private_key=joint_fixture.keypair.private,
             public_key=joint_fixture.keypair.public,
             s3=s3,
@@ -184,6 +185,7 @@ async def test_success_event(
         (joint_fixture.second_s3, joint_fixture.endpoint_aliases.node2),
     ):
         data = await create_test_file(
+            bucket_id=INBOX_BUCKET_ID,
             private_key=joint_fixture.keypair.private,
             public_key=joint_fixture.keypair.public,
             s3=s3,
@@ -311,6 +313,7 @@ async def test_fingerprint_already_present(
         (joint_fixture.second_s3, joint_fixture.endpoint_aliases.node2),
     ):
         data = await create_test_file(
+            bucket_id=INBOX_BUCKET_ID,
             private_key=joint_fixture.keypair.private,
             public_key=joint_fixture.keypair.public,
             s3=s3,

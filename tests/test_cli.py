@@ -39,18 +39,24 @@ from tests.fixtures.test_files import create_test_file
 @pytest.mark.asyncio(scope="session")
 async def test_staging_inspector(caplog, joint_fixture: JointFixture):  # noqa: F811
     """Check storage inspector functionality."""
-    s3 = joint_fixture.s3
-
     # prepare storage entries
     file_1 = await create_test_file(
+        bucket_id=STAGING_BUCKET_ID,
         private_key=joint_fixture.keypair.private,
         public_key=joint_fixture.keypair.public,
-        s3=s3,
+        s3=joint_fixture.s3,
     )
     file_2 = await create_test_file(
+        bucket_id=STAGING_BUCKET_ID,
         private_key=joint_fixture.keypair.private,
         public_key=joint_fixture.keypair.public,
-        s3=s3,
+        s3=joint_fixture.second_s3,
+    )
+    file_3 = await create_test_file(
+        bucket_id=STAGING_BUCKET_ID,
+        private_key=joint_fixture.keypair.private,
+        public_key=joint_fixture.keypair.public,
+        s3=joint_fixture.s3,
     )
 
     # populate staging object db
@@ -86,8 +92,12 @@ async def test_staging_inspector(caplog, joint_fixture: JointFixture):  # noqa: 
     ) as staging_inspector:
         await staging_inspector.check_buckets()
 
-    assert len(caplog.messages) == 1
+    assert len(caplog.messages) == 2
     assert (
         f"Stale object '{file_2.file_object.object_id}' found for file '{file_2.file_id}' in bucket '{STAGING_BUCKET_ID}' of storage '{joint_fixture.endpoint_aliases.node2}'."
+        in caplog.messages
+    )
+    assert (
+        f"Object '{file_3.file_object.object_id}' with no corresponding DB entry found in bucket '{STAGING_BUCKET_ID}' of storage '{joint_fixture.endpoint_aliases.node1}'."
         in caplog.messages
     )
