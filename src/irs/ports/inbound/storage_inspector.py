@@ -12,26 +12,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-"""Interface for validating uploaded files"""
+#
+"""Interfaces for periodic storage maintenance."""
 
 from abc import ABC, abstractmethod
 
-from ghga_event_schemas import pydantic_ as event_schemas
 
-
-class InterrogatorPort(ABC):
-    """The interface of a service for validating the content of encrypted files."""
+class StorageInspectorPort(ABC):
+    """Interface for periodically checking storage buckets for stale files."""
 
     @abstractmethod
-    async def interrogate(self, *, payload: event_schemas.FileUploadReceived) -> None:
-        """
-        Forwards first file part to encryption key store, retrieves file encryption
-        secret(s) (K_data), decrypts file and computes checksums
-        """
-        ...
-
-    @abstractmethod
-    async def remove_staging_object(self, *, file_id: str, storage_alias: str) -> None:
-        """Remove transient object from staging once copy to permanent storage has been confirmed"""
-        ...
+    async def check_buckets(self):
+        """Check objects in all buckets configured for the service."""

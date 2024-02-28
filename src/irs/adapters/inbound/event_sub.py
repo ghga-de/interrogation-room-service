@@ -27,13 +27,25 @@ from irs.ports.inbound.interrogator import InterrogatorPort
 class EventSubTanslatorConfig(BaseSettings):
     """Config for publishing file upload-related events."""
 
+    file_registered_event_topic: str = Field(
+        default=...,
+        description="Name of the topic used for events indicating that a new file has"
+        + " been internally registered.",
+        examples=["internal_file_registry"],
+    )
+    file_registered_event_type: str = Field(
+        default=...,
+        description="The type used for events indicating that a new file has"
+        + " been internally registered.",
+        examples=["file_registered"],
+    )
     upload_received_event_topic: str = Field(
-        ...,
+        default=...,
         description="Name of the topic to publish events that inform about new file uploads.",
         examples=["file_uploads"],
     )
     upload_received_event_type: str = Field(
-        ...,
+        default=...,
         description="The type to use for events that inform about new file uploads.",
         examples=["file_upload_received"],
     )
@@ -44,18 +56,23 @@ class EventSubTranslator(EventSubscriberProtocol):
     is used to received events relevant for file uploads.
     """
 
-    def __init__(self, config: EventSubTanslatorConfig, interrogator: InterrogatorPort):
+    def __init__(
+        self,
+        config: EventSubTanslatorConfig,
+        interrogator: InterrogatorPort,
+    ):
         """Initialize with config parameters and core dependencies."""
+        self._config = config
+        self._interrogator = interrogator
+
         self.topics_of_interest = [
+            config.file_registered_event_topic,
             config.upload_received_event_topic,
         ]
         self.types_of_interest = [
+            config.file_registered_event_type,
             config.upload_received_event_type,
         ]
-
-        self._interrogator = interrogator
-
-        self._config = config
 
     async def _consume_validated(
         self, *, payload: JsonObject, type_: Ascii, topic: Ascii
@@ -68,9 +85,36 @@ class EventSubTranslator(EventSubscriberProtocol):
             type_ (str): The type of the event.
             topic (str): Name of the topic the event was published to.
         """
+        if type_ == self._config.upload_received_event_type:
+            await self._consume_upload_received(payload=payload)
+        elif type_ == self._config.file_registered_event_type:
+            await self._consume_file_internally_registered(payload=payload)
+        else:
+            raise RuntimeError(f"Unexpected event of type: {type_}")
+
+    async def _consume_upload_received(self, *, payload: JsonObject):
+        """
+        Consume upload finished event to grab object data from the announced inbox bucket,
+        re-encrypt it and move re-encrypted data into staging.
+        """
         validated_payload = get_validated_payload(
             payload=payload,
             schema=event_schemas.FileUploadReceived,
         )
 
         await self._interrogator.interrogate(payload=validated_payload)
+
+    async def _consume_file_internally_registered(self, *, payload: JsonObject):
+        """
+        Consume confirmation event that object data has been moved to permanent storage
+        and the transient staging copy can be removed.
+        """
+        validated_payload = get_validated_payload(
+            payload=payload,
+            schema=event_schemas.FileInternallyRegistered,
+        )
+
+        await self._interrogator.remove_staging_object(
+            file_id=validated_payload.file_id,
+            storage_alias=validated_payload.s3_endpoint_alias,
+        )

@@ -17,12 +17,15 @@
 import math
 from collections.abc import AsyncGenerator, Sequence
 from dataclasses import dataclass
+from logging import getLogger
 from typing import Optional
 
 import requests
 from hexkit.protocols.objstorage import ObjectStorageProtocol
 
 from irs.adapters.outbound.http import exceptions
+
+log = getLogger(__name__)
 
 
 def calc_part_ranges(
@@ -80,11 +83,19 @@ class StagingHandler:
         self._upload_id = await self._object_storage.init_multipart_upload(
             bucket_id=self._staging.bucket_id, object_id=self._staging.object_id
         )
+        log.debug(
+            "Initiated upload of object '%s' to staging bucket '%s' with id '%s'.",
+            self._staging.object_id,
+            self._staging.bucket_id,
+            self._upload_id,
+        )
 
     async def stage_part(self, *, data: bytes, part_number: int) -> None:
         """Save a file part to the staging area"""
         if not self._upload_id:
-            raise self.UploadNotInitializedError()
+            upload_not_initialized = self.UploadNotInitializedError()
+            log.error(upload_not_initialized)
+            raise upload_not_initialized
 
         url = await self._object_storage.get_part_upload_url(
             upload_id=self._upload_id,
@@ -101,7 +112,9 @@ class StagingHandler:
     async def complete_staging(self, *, parts: int) -> None:
         """Complete the staging of a re-encrypted file"""
         if not self._upload_id:
-            raise self.UploadNotInitializedError()
+            upload_not_initialized = self.UploadNotInitializedError()
+            log.error(upload_not_initialized)
+            raise upload_not_initialized
 
         await self._object_storage.complete_multipart_upload(
             upload_id=self._upload_id,
@@ -110,6 +123,46 @@ class StagingHandler:
             anticipated_part_quantity=parts,
             anticipated_part_size=self._part_size,
         )
+        log.debug(
+            "Finished upload of object '%s' to staging bucket '%s' with id '%s'.",
+            self._staging.object_id,
+            self._staging.bucket_id,
+            self._upload_id,
+        )
+
+    async def abort_staging(self) -> None:
+        """Abort an ongoing multipart upload"""
+        if not self._upload_id:
+            return
+
+        await self._object_storage.abort_multipart_upload(
+            upload_id=self._upload_id,
+            bucket_id=self._staging.bucket_id,
+            object_id=self._staging.object_id,
+        )
+
+        log.warning(
+            "Aborted upload of object '%s' to staging bucket '%s' with id '%s'.",
+            self._staging.object_id,
+            self._staging.bucket_id,
+            self._upload_id,
+        )
+
+    async def delete_from_staging(self) -> None:
+        """Remove uploaded object from staging"""
+        exists = await self._object_storage.does_object_exist(
+            bucket_id=self._staging.bucket_id, object_id=self._staging.object_id
+        )
+
+        if exists:
+            await self._object_storage.delete_object(
+                bucket_id=self._staging.bucket_id, object_id=self._staging.object_id
+            )
+            log.warning(
+                "Aborted upload of object '%s' to staging bucket '%s'.",
+                self._staging.object_id,
+                self._staging.bucket_id,
+            )
 
     async def retrieve_parts(self, *, offset: int = 0) -> AsyncGenerator[bytes, None]:
         """Get all parts from inbox, starting with file content at offset"""

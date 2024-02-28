@@ -12,11 +12,15 @@ object_storages:
       s3_access_key_id: test
       s3_secret_access_key: test
 
+file_registered_event_topic: internal_file_registry
+file_registered_event_type: file_registered
 interrogation_topic: file_interrogation
 interrogation_success_type: file_validation_success
 interrogation_failure_type: file_validation_failure
 upload_received_event_topic: file_uploads
 upload_received_event_type: file_upload_received
+
+object_stale_after_minutes: 1440
 
 db_connection_str: "mongodb://mongodb:27017"
 db_name: "dev_db"

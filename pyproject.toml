@@ -22,7 +22,7 @@ classifiers = [
     "Intended Audience :: Developers",
 ]
 name = "irs"
-version = "1.2.0"
+version = "2.0.0"
 description = "Interrogation Room Service"
 dependencies = [
     "ghga-service-commons[api]>=3.0.0",
@@ -38,7 +38,7 @@ text = "Apache 2.0"
 Repository = "https://github.com/ghga-de/interrogation-room-service"
 
 [project.scripts]
-irs = "irs.__main__:run"
+irs = "irs.__main__:cli"
 
 [tool.setuptools.packages.find]
 where = [
@@ -52,6 +52,21 @@ exclude = [
     "__pycache__",
     "build",
     "dist",
+]
+line-length = 88
+src = [
+    "src",
+    "tests",
+    "examples",
+    "scripts",
+]
+target-version = "py39"
+
+[tool.ruff.lint]
+fixable = [
+    "UP",
+    "I",
+    "D",
 ]
 ignore = [
     "E",
@@ -70,7 +85,6 @@ ignore = [
     "D206",
     "D300",
 ]
-line-length = 88
 select = [
     "C90",
     "F",
@@ -84,23 +98,11 @@ select = [
     "SIM",
     "D",
 ]
-fixable = [
-    "UP",
-    "I",
-    "D",
-]
-src = [
-    "src",
-    "tests",
-    "examples",
-    "scripts",
-]
-target-version = "py39"
 
-[tool.ruff.mccabe]
+[tool.ruff.lint.mccabe]
 max-complexity = 10
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 "scripts/*" = [
     "PL",
     "S",
@@ -126,7 +128,7 @@ max-complexity = 10
     "D",
 ]
 
-[tool.ruff.pydocstyle]
+[tool.ruff.lint.pydocstyle]
 convention = "pep257"
 
 [tool.mypy]
