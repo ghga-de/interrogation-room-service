@@ -20,7 +20,7 @@ from datetime import timedelta
 
 from ghga_service_commons.utils.multinode_storage import S3ObjectStorages
 from ghga_service_commons.utils.utc_dates import now_as_utc
-from hexkit.protocols.dao import NoHitsFoundError
+from hexkit.protocols.dao import MultipleHitsFoundError, NoHitsFoundError
 from pydantic import Field
 from pydantic_settings import BaseSettings
 
@@ -65,15 +65,17 @@ class StagingInspector(StorageInspectorPort):
             for object_id in await object_storage.list_all_object_ids(bucket_id):
                 try:
                     staging_object = await self._staging_object_dao.find_one(
-                        mapping={"object_id": object_id}
+                        mapping={"object_id": object_id, "storage_alias": storage_alias}
                     )
                 except NoHitsFoundError:
+                    # This can happen in one of two cases:
+                    # 1) Failed to send success event
+                    # 2) Success event sent, but failed to insert staging object entry
                     extra = {
                         "object_id": object_id,
                         "bucket_id": bucket_id,
                         "storage_alias": storage_alias,
                     }
-
                     log.error(
                         "Object '%s' with no corresponding DB entry found in bucket '%s'"
                         + " of storage '%s'.",
@@ -81,9 +83,17 @@ class StagingInspector(StorageInspectorPort):
                         extra=extra,
                     )
                     continue
-
-                if staging_object.storage_alias != storage_alias:
-                    # can't look up bases on two fields, skip for now and log later
+                except MultipleHitsFoundError as error:
+                    # can only happen if the same object ID is generated from uuid4()
+                    extra = {
+                        "object_id": object_id,
+                        "bucket_id": bucket_id,
+                        "storage_alias": storage_alias,
+                    }
+                    log.critical(
+                        error,
+                        extra=extra,
+                    )
                     continue
 
                 stale_as_of = now_as_utc() - timedelta(
