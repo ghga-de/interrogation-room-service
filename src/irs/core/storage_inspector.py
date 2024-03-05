@@ -55,6 +55,62 @@ class StagingInspector(StorageInspectorPort):
         self._staging_object_dao = staging_object_dao
         self._object_storages = object_storages
 
+    async def _inspect_object(
+        self, *, bucket_id: str, object_id: str, storage_alias: str
+    ):
+        """Check one specific object in a specified storage node."""
+        try:
+            staging_object = await self._staging_object_dao.find_one(
+                mapping={"object_id": object_id, "storage_alias": storage_alias}
+            )
+        except NoHitsFoundError:
+            # This can happen in one of two cases:
+            # 1) Failed to send success event
+            # 2) Success event sent, but failed to insert staging object entry
+            extra = {
+                "object_id": object_id,
+                "bucket_id": bucket_id,
+                "storage_alias": storage_alias,
+            }
+            log.error(
+                "Object '%s' with no corresponding DB entry found in bucket '%s'"
+                + " of storage '%s'.",
+                *extra.values(),
+                extra=extra,
+            )
+            return
+
+        except MultipleHitsFoundError as error:
+            # can only happen if the same object ID is generated from uuid4()
+            extra = {
+                "object_id": object_id,
+                "bucket_id": bucket_id,
+                "storage_alias": storage_alias,
+            }
+            log.critical(
+                error,
+                extra=extra,
+            )
+            return
+
+        stale_as_of = now_as_utc() - timedelta(
+            minutes=self._config.object_stale_after_minutes
+        )
+        if staging_object.creation_date <= stale_as_of:
+            # only log for now, but this points to an underlying issue
+            extra = {
+                "object_id": object_id,
+                "file_id": staging_object.file_id,
+                "bucket_id": bucket_id,
+                "storage_alias": storage_alias,
+            }
+
+            log.error(
+                "Stale object '%s' found for file '%s' in bucket '%s' of storage '%s'.",
+                *extra.values(),
+                extra=extra,
+            )
+
     async def check_buckets(self):
         """Check objects in all buckets configured for the service."""
         for storage_alias in self._object_storages._config.object_storages:
@@ -63,53 +119,8 @@ class StagingInspector(StorageInspectorPort):
             bucket_id, object_storage = self._object_storages.for_alias(storage_alias)
 
             for object_id in await object_storage.list_all_object_ids(bucket_id):
-                try:
-                    staging_object = await self._staging_object_dao.find_one(
-                        mapping={"object_id": object_id, "storage_alias": storage_alias}
-                    )
-                except NoHitsFoundError:
-                    # This can happen in one of two cases:
-                    # 1) Failed to send success event
-                    # 2) Success event sent, but failed to insert staging object entry
-                    extra = {
-                        "object_id": object_id,
-                        "bucket_id": bucket_id,
-                        "storage_alias": storage_alias,
-                    }
-                    log.error(
-                        "Object '%s' with no corresponding DB entry found in bucket '%s'"
-                        + " of storage '%s'.",
-                        *extra.values(),
-                        extra=extra,
-                    )
-                    continue
-                except MultipleHitsFoundError as error:
-                    # can only happen if the same object ID is generated from uuid4()
-                    extra = {
-                        "object_id": object_id,
-                        "bucket_id": bucket_id,
-                        "storage_alias": storage_alias,
-                    }
-                    log.critical(
-                        error,
-                        extra=extra,
-                    )
-                    continue
-
-                stale_as_of = now_as_utc() - timedelta(
-                    minutes=self._config.object_stale_after_minutes
+                await self._inspect_object(
+                    bucket_id=bucket_id,
+                    object_id=object_id,
+                    storage_alias=storage_alias,
                 )
-                if staging_object.creation_date <= stale_as_of:
-                    # only log for now, but this points to an underlying issue
-                    extra = {
-                        "object_id": object_id,
-                        "file_id": staging_object.file_id,
-                        "bucket_id": bucket_id,
-                        "storage_alias": storage_alias,
-                    }
-
-                    log.error(
-                        "Stale object '%s' found for file '%s' in bucket '%s' of storage '%s'.",
-                        *extra.values(),
-                        extra=extra,
-                    )

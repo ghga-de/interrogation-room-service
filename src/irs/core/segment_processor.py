@@ -23,6 +23,7 @@ from crypt4gh.lib import CIPHER_SEGMENT_SIZE, decrypt_block
 from nacl.bindings import crypto_aead_chacha20poly1305_ietf_encrypt
 
 from irs.core.exceptions import LastSegmentCorruptedError, SegmentCorruptedError
+from irs.core.models import Checksums
 from irs.core.staging_handler import StagingHandler
 
 
@@ -56,7 +57,7 @@ class CipherSegmentProcessor:
         self.partial_ciphersegment = b""
         self.reencryption_buffer = b""
 
-    async def process(self):
+    async def process(self) -> Checksums:
         """Delegate processing and return checksums"""
         # start multipart upload for staging multipart upload
         await self.object_storage_handler.init_staging()
@@ -68,10 +69,10 @@ class CipherSegmentProcessor:
             parts=self.reencrypted_part_number
         )
 
-        return (
-            self.encrypted_md5_part_checksums,
-            self.encrypted_sha256_part_checksums,
-            self.total_sha256_checksum.hexdigest(),
+        return Checksums(
+            part_checksums_md5=self.encrypted_md5_part_checksums,
+            part_checksums_sha256=self.encrypted_sha256_part_checksums,
+            content_checksum_sha256=self.total_sha256_checksum.hexdigest(),
         )
 
     def _encrypt_segment(self, *, data: bytes, key: bytes) -> bytes:

@@ -19,7 +19,6 @@ import uuid
 from logging import getLogger
 
 from crypt4gh.lib import CryptoError
-from ghga_event_schemas import pydantic_ as event_schemas
 from ghga_service_commons.utils.multinode_storage import S3ObjectStorages
 from hexkit.protocols.dao import ResourceNotFoundError
 from hexkit.utils import calc_part_size
@@ -27,7 +26,12 @@ from hexkit.utils import calc_part_size
 from irs.adapters.outbound.http.api_calls import call_eks_api
 from irs.adapters.outbound.http.exceptions import KnownError
 from irs.config import CONFIG
-from irs.core.models import StagingObject, UploadReceivedFingerprint
+from irs.core.models import (
+    InterrogationSubject,
+    ProcessingResult,
+    StagingObject,
+    UploadReceivedFingerprint,
+)
 from irs.core.segment_processor import CipherSegmentProcessor
 from irs.core.staging_handler import StagingHandler, StorageIds
 from irs.ports.inbound.interrogator import InterrogatorPort
@@ -54,31 +58,88 @@ class Interrogator(InterrogatorPort):
         self._staging_object_dao = staging_object_dao
         self._object_storages = object_storages
 
-    async def interrogate(self, *, payload: event_schemas.FileUploadReceived) -> None:
+    async def _fingerprint_already_seen(
+        self, *, fingerprint: UploadReceivedFingerprint
+    ) -> bool:
+        """Check if the incoming event has already been processed."""
+        with contextlib.suppress(ResourceNotFoundError):
+            await self._fingerprint_dao.get_by_id(id_=fingerprint.checksum)
+            return True
+        return False
+
+    async def _init_staging_handler(
+        self, *, inbox_bucket_id: str, inbox_object_id, storage_alias: str
+    ) -> StagingHandler:
+        """Initialize staging handler object and necessary variables for re-encryption."""
+        try:
+            staging_bucket_id, object_storage = self._object_storages.for_alias(
+                storage_alias
+            )
+        except KeyError as error:
+            storage_not_configured = ValueError(
+                f"Storage alias not configured: {storage_alias}"
+            )
+            log.critical(storage_not_configured, extra={"alias": storage_alias})
+            raise storage_not_configured from error
+
+        # generate ID for the staging bucket file
+        object_id = str(uuid.uuid4())
+        staging_ids = StorageIds(bucket_id=staging_bucket_id, object_id=object_id)
+        inbox_ids = StorageIds(bucket_id=inbox_bucket_id, object_id=inbox_object_id)
+
+        object_size = await object_storage.get_object_size(
+            object_id=inbox_object_id, bucket_id=inbox_bucket_id
+        )
+        part_size = calc_part_size(file_size=object_size)
+
+        return StagingHandler(
+            storage=object_storage,
+            inbox_ids=inbox_ids,
+            staging_ids=staging_ids,
+            part_size=part_size,
+        )
+
+    async def _reencrypt_and_stage(
+        self, *, staging_handler: StagingHandler, submitter_public_key: str
+    ) -> ProcessingResult:
+        """Re-encrypt and upload part by part to staging bucket."""
+        # extract current secret and generate new one
+        download_url = await staging_handler.storage.get_object_download_url(
+            object_id=staging_handler.inbox.object_id,
+            bucket_id=staging_handler.inbox.bucket_id,
+        )
+        part = await staging_handler.retrieve_part(
+            url=download_url, start=0, stop=staging_handler.part_size - 1
+        )
+        submitter_secret, new_secret, secret_id, offset = call_eks_api(
+            file_part=part,
+            public_key=submitter_public_key,
+            api_url=CONFIG.ekss_base_url,
+        )
+
+        # re-encrypt and multipart upload from inbox bucket to staging bucket
+        cipher_segment_processor = CipherSegmentProcessor(
+            secret=submitter_secret,
+            new_secret=new_secret,
+            part_size=staging_handler.part_size,
+            offset=offset,
+            object_storage_handler=staging_handler,
+        )
+
+        checksums = await cipher_segment_processor.process()
+
+        return ProcessingResult(offset=offset, secret_id=secret_id, checksums=checksums)
+
+    async def interrogate(self, *, subject: InterrogationSubject) -> None:
         """
         Forwards first file part to encryption key store, retrieves file encryption
         secret(s) (K_data), decrypts file and computes checksums. The object and bucket
         ID parameters refer to the object_id and bucket_id associated with the upload,
         i.e. not the staging bucket.
         """
-        try:
-            staging_bucket_id, object_storage = self._object_storages.for_alias(
-                payload.s3_endpoint_alias
-            )
-        except KeyError as error:
-            storage_not_configured = ValueError(
-                f"Storage alias not configured: {payload.s3_endpoint_alias}"
-            )
-            log.critical(
-                storage_not_configured, extra={"alias": payload.s3_endpoint_alias}
-            )
-            raise storage_not_configured from error
-
-        fingerprint = UploadReceivedFingerprint.generate(payload=payload)
-
-        with contextlib.suppress(ResourceNotFoundError):
-            await self._fingerprint_dao.get_by_id(id_=fingerprint.checksum)
-            file_id = payload.file_id
+        fingerprint = UploadReceivedFingerprint.generate(subject=subject)
+        if await self._fingerprint_already_seen(fingerprint=fingerprint):
+            file_id = subject.file_id
             log.warning(
                 "Payload for file ID '%s' has already been processed.",
                 file_id,
@@ -86,97 +147,51 @@ class Interrogator(InterrogatorPort):
             )
             return
 
-        object_size = await object_storage.get_object_size(
-            object_id=payload.object_id, bucket_id=payload.bucket_id
-        )
-        part_size = calc_part_size(file_size=object_size)
-
-        # generate ID for the staging bucket file
-        object_id = str(uuid.uuid4())
-        staging_ids = StorageIds(bucket_id=staging_bucket_id, object_id=object_id)
-        inbox_ids = StorageIds(bucket_id=payload.bucket_id, object_id=payload.object_id)
-
-        object_storage_handler = StagingHandler(
-            object_storage=object_storage,
-            inbox_ids=inbox_ids,
-            staging_ids=staging_ids,
-            part_size=part_size,
+        staging_handler = await self._init_staging_handler(
+            inbox_bucket_id=subject.inbox_bucket_id,
+            inbox_object_id=subject.inbox_object_id,
+            storage_alias=subject.storage_alias,
         )
 
-        # do the actual work
         try:
-            download_url = await object_storage.get_object_download_url(
-                object_id=payload.object_id, bucket_id=payload.bucket_id
+            processing_result = await self._reencrypt_and_stage(
+                staging_handler=staging_handler,
+                submitter_public_key=subject.submitter_public_key,
             )
-            part = await object_storage_handler.retrieve_part(
-                url=download_url, start=0, stop=part_size - 1
-            )
-            submitter_secret, new_secret, secret_id, offset = call_eks_api(
-                file_part=part,
-                public_key=payload.submitter_public_key,
-                api_url=CONFIG.ekss_base_url,
-            )
-
-            cipher_segment_processor = CipherSegmentProcessor(
-                secret=submitter_secret,
-                new_secret=new_secret,
-                part_size=part_size,
-                offset=offset,
-                object_storage_handler=object_storage_handler,
-            )
-            (
-                part_checksums_md5,
-                part_checksums_sha256,
-                content_checksum_sha256,
-            ) = await cipher_segment_processor.process()
         except (CryptoError, KnownError, ValueError) as exc:
             # remove data for ongoing upload in case of failure
-            await object_storage_handler.abort_staging()
+            await staging_handler.abort_staging()
             await self._event_publisher.publish_validation_failure(
-                file_id=payload.file_id,
-                object_id=object_id,
-                bucket_id=staging_bucket_id,
-                upload_date=payload.upload_date,
-                cause=str(exc),
-                s3_endpoint_alias=payload.s3_endpoint_alias,
+                staging_handler=staging_handler, subject=subject, cause=str(exc)
             )
             return
 
         # handle publishing both outcomes
-        if payload.expected_decrypted_sha256 == content_checksum_sha256:
-            await self._event_publisher.publish_validation_success(
-                file_id=payload.file_id,
-                object_id=object_id,
-                bucket_id=staging_bucket_id,
-                secret_id=secret_id,
-                offset=offset,
-                upload_date=payload.upload_date,
-                part_size=part_size,
-                part_checksums_sha256=part_checksums_sha256,
-                part_checksums_md5=part_checksums_md5,
-                content_checksum_sha256=content_checksum_sha256,
-                decrypted_size=payload.decrypted_size,
-                s3_endpoint_alias=payload.s3_endpoint_alias,
+        if (
+            subject.expected_decrypted_sha256
+            != processing_result.checksums.content_checksum_sha256
+        ):
+            # remove invalid object from its staging bucket
+            await staging_handler.delete_staged()
+            await self._event_publisher.publish_validation_failure(
+                staging_handler=staging_handler, subject=subject
             )
+        else:
             # save mapping for stale object check/removal
             staging_object = StagingObject(
-                file_id=payload.file_id,
-                object_id=object_id,
-                storage_alias=payload.s3_endpoint_alias,
+                file_id=subject.file_id,
+                object_id=staging_handler.staging.object_id,
+                storage_alias=subject.storage_alias,
             )
             await self._staging_object_dao.insert(dto=staging_object)
-            # Everything has been processed successfully, add fingerprint to db for lookup
-            await self._fingerprint_dao.insert(fingerprint)
-        else:
-            # remove invalid object from its staging bucket
-            await object_storage_handler.delete_from_staging()
-            await self._event_publisher.publish_validation_failure(
-                file_id=payload.file_id,
-                object_id=object_id,
-                bucket_id=staging_bucket_id,
-                upload_date=payload.upload_date,
-                s3_endpoint_alias=payload.s3_endpoint_alias,
+            await self._event_publisher.publish_validation_success(
+                processing_result=processing_result,
+                staging_handler=staging_handler,
+                subject=subject,
             )
+
+        # Everything has been processed, add fingerprint to db for lookup
+        await self._fingerprint_dao.insert(fingerprint)
 
     async def remove_staging_object(self, *, file_id: str, storage_alias: str) -> None:
         """Remove transient object from staging once copy to permanent storage has been confirmed."""

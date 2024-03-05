@@ -17,40 +17,31 @@
 
 from abc import ABC, abstractmethod
 
+from irs.core.models import InterrogationSubject, ProcessingResult
+from irs.core.staging_handler import StagingHandler
+
 
 class EventPublisherPort(ABC):
     """An interface for an adapter that publishes events happening to this service."""
 
     @abstractmethod
-    async def publish_validation_success(  # noqa: PLR0913
+    async def publish_validation_success(
         self,
         *,
-        file_id: str,
-        object_id: str,
-        bucket_id: str,
-        upload_date: str,
-        secret_id: str,
-        offset: int,
-        part_size: int,
-        decrypted_size: int,
-        part_checksums_md5: list[str],
-        part_checksums_sha256: list[str],
-        content_checksum_sha256: str,
-        s3_endpoint_alias: str,
+        processing_result: ProcessingResult,
+        staging_handler: StagingHandler,
+        subject: InterrogationSubject,
     ) -> None:
-        """Publish event informing that a validation was successfull."""
+        """Publish event informing that a validation was successful."""
         ...
 
     @abstractmethod
-    async def publish_validation_failure(  # noqa: PLR0913
+    async def publish_validation_failure(
         self,
         *,
-        file_id: str,
-        object_id: str,
-        bucket_id: str,
-        upload_date: str,
-        s3_endpoint_alias: str,
+        staging_handler: StagingHandler,
+        subject: InterrogationSubject,
         cause: str = "Checksum mismatch",
     ) -> None:
-        """Publish event informing that a validation was notsuccessfull."""
+        """Publish event informing that a validation was not successful."""
         ...

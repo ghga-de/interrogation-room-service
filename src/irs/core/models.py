@@ -18,7 +18,6 @@
 
 import hashlib
 
-from ghga_event_schemas import pydantic_ as event_schemas
 from ghga_service_commons.utils.utc_dates import UTCDatetime, now_as_utc
 from pydantic import BaseModel, Field
 
@@ -41,6 +40,19 @@ class StagingObject(BaseModel):
     creation_date: UTCDatetime = Field(default_factory=now_as_utc)
 
 
+class InterrogationSubject(BaseModel):
+    """Necessary data for core functionality from incoming payload-"""
+
+    file_id: str
+    inbox_bucket_id: str
+    inbox_object_id: str
+    storage_alias: str
+    decrypted_size: int
+    expected_decrypted_sha256: str
+    upload_date: str
+    submitter_public_key: str
+
+
 class UploadReceivedFingerprint(BaseModel):
     """
     Stores the hash of a FileUploadReceived payload along with its generation
@@ -53,10 +65,26 @@ class UploadReceivedFingerprint(BaseModel):
 
     @staticmethod
     def generate(
-        payload: event_schemas.FileUploadReceived,
+        subject: InterrogationSubject,
     ) -> "UploadReceivedFingerprint":
         """Serialize payload to json and generate hash"""
-        serialized = payload.model_dump_json()
+        serialized = subject.model_dump_json()
         checksum = hashlib.sha256(serialized.encode("utf-8")).hexdigest()
 
         return UploadReceivedFingerprint(checksum=checksum)
+
+
+class Checksums(BaseModel):
+    """Container for checksums needed for validation and outbound events."""
+
+    part_checksums_md5: list[str]
+    part_checksums_sha256: list[str]
+    content_checksum_sha256: str
+
+
+class ProcessingResult(BaseModel):
+    """Data generated during re-encryption that is needed downstream."""
+
+    offset: int
+    secret_id: str
+    checksums: Checksums

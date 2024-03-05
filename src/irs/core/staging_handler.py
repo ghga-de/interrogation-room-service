@@ -24,6 +24,7 @@ import requests
 from hexkit.protocols.objstorage import ObjectStorageProtocol
 
 from irs.adapters.outbound.http import exceptions
+from irs.ports.inbound.staging_handler import StagingHandlerPort
 
 log = getLogger(__name__)
 
@@ -53,54 +54,51 @@ def calc_part_ranges(
 
 @dataclass
 class StorageIds:
-    """Container for bucket and object ID"""
+    """Container for bucket and object ID."""
 
     bucket_id: str
     object_id: str
 
 
-class StagingHandler:
+class StagingHandler(StagingHandlerPort):
     """Wrapper for object storage staging functionality."""
-
-    class UploadNotInitializedError(RuntimeError):
-        """Raised when the upload ID is not set for a method that needs it."""
 
     def __init__(
         self,
-        object_storage: ObjectStorageProtocol,
+        storage: ObjectStorageProtocol,
         inbox_ids: StorageIds,
         staging_ids: StorageIds,
         part_size: int,
     ) -> None:
-        self._object_storage = object_storage
-        self._part_size = part_size
-        self._inbox = inbox_ids
-        self._staging = staging_ids
+        self.storage = storage
+        self.part_size = part_size
+        self.inbox = inbox_ids
+        self.staging = staging_ids
         self._upload_id: Optional[str] = None
 
     async def init_staging(self) -> None:
-        """Start staging a re-encrypted file to staging area, returns an upload id"""
-        self._upload_id = await self._object_storage.init_multipart_upload(
-            bucket_id=self._staging.bucket_id, object_id=self._staging.object_id
+        """Start staging a re-encrypted file to staging area, returns an upload id."""
+        self._upload_id = await self.storage.init_multipart_upload(
+            bucket_id=self.staging.bucket_id, object_id=self.staging.object_id
         )
         log.debug(
             "Initiated upload of object '%s' to staging bucket '%s' with id '%s'.",
-            self._staging.object_id,
-            self._staging.bucket_id,
+            self.staging.object_id,
+            self.staging.bucket_id,
             self._upload_id,
         )
 
     async def stage_part(self, *, data: bytes, part_number: int) -> None:
-        """Save a file part to the staging area"""
+        """Save a file part to the staging area."""
         if not self._upload_id:
             upload_not_initialized = self.UploadNotInitializedError()
             log.error(upload_not_initialized)
             raise upload_not_initialized
 
-        url = await self._object_storage.get_part_upload_url(
+        url = await self.storage.get_part_upload_url(
             upload_id=self._upload_id,
-            bucket_id=self._staging.bucket_id,
-            object_id=self._staging.object_id,
+            bucket_id=self.staging.bucket_id,
+            object_id=self.staging.object_id,
             part_number=part_number,
         )
 
@@ -110,75 +108,75 @@ class StagingHandler:
             raise exceptions.RequestFailedError(url=url) from request_error
 
     async def complete_staging(self, *, parts: int) -> None:
-        """Complete the staging of a re-encrypted file"""
+        """Complete the staging of a re-encrypted file."""
         if not self._upload_id:
             upload_not_initialized = self.UploadNotInitializedError()
             log.error(upload_not_initialized)
             raise upload_not_initialized
 
-        await self._object_storage.complete_multipart_upload(
+        await self.storage.complete_multipart_upload(
             upload_id=self._upload_id,
-            bucket_id=self._staging.bucket_id,
-            object_id=self._staging.object_id,
+            bucket_id=self.staging.bucket_id,
+            object_id=self.staging.object_id,
             anticipated_part_quantity=parts,
-            anticipated_part_size=self._part_size,
+            anticipated_part_size=self.part_size,
         )
         log.debug(
             "Finished upload of object '%s' to staging bucket '%s' with id '%s'.",
-            self._staging.object_id,
-            self._staging.bucket_id,
+            self.staging.object_id,
+            self.staging.bucket_id,
             self._upload_id,
         )
 
     async def abort_staging(self) -> None:
-        """Abort an ongoing multipart upload"""
+        """Abort an ongoing multipart upload."""
         if not self._upload_id:
             return
 
-        await self._object_storage.abort_multipart_upload(
+        await self.storage.abort_multipart_upload(
             upload_id=self._upload_id,
-            bucket_id=self._staging.bucket_id,
-            object_id=self._staging.object_id,
+            bucket_id=self.staging.bucket_id,
+            object_id=self.staging.object_id,
         )
 
         log.warning(
-            "Aborted upload of object '%s' to staging bucket '%s' with id '%s'.",
-            self._staging.object_id,
-            self._staging.bucket_id,
+            "Aborted multipart upload of object '%s' to staging bucket '%s' with id '%s'.",
+            self.staging.object_id,
+            self.staging.bucket_id,
             self._upload_id,
         )
 
-    async def delete_from_staging(self) -> None:
-        """Remove uploaded object from staging"""
-        exists = await self._object_storage.does_object_exist(
-            bucket_id=self._staging.bucket_id, object_id=self._staging.object_id
+    async def delete_staged(self) -> None:
+        """Remove uploaded object from staging."""
+        exists = await self.storage.does_object_exist(
+            bucket_id=self.staging.bucket_id, object_id=self.staging.object_id
         )
 
         if exists:
-            await self._object_storage.delete_object(
-                bucket_id=self._staging.bucket_id, object_id=self._staging.object_id
+            await self.storage.delete_object(
+                bucket_id=self.staging.bucket_id, object_id=self.staging.object_id
             )
-            log.warning(
-                "Aborted upload of object '%s' to staging bucket '%s'.",
-                self._staging.object_id,
-                self._staging.bucket_id,
+            log.info(
+                "Removed object '%s' from staging bucket '%s'.",
+                self.staging.object_id,
+                self.staging.bucket_id,
             )
 
     async def retrieve_parts(self, *, offset: int = 0) -> AsyncGenerator[bytes, None]:
-        """Get all parts from inbox, starting with file content at offset"""
-        download_url = await self._object_storage.get_object_download_url(
-            bucket_id=self._inbox.bucket_id, object_id=self._inbox.object_id
+        """Get all parts from inbox, starting with file content at offset."""
+        download_url = await self.storage.get_object_download_url(
+            bucket_id=self.inbox.bucket_id, object_id=self.inbox.object_id
         )
-        object_size = await self._object_storage.get_object_size(
-            bucket_id=self._inbox.bucket_id, object_id=self._inbox.object_id
+        object_size = await self.storage.get_object_size(
+            bucket_id=self.inbox.bucket_id, object_id=self.inbox.object_id
         )
         for start, stop in calc_part_ranges(
-            part_size=self._part_size, object_size=object_size, byte_offset=offset
+            part_size=self.part_size, object_size=object_size, byte_offset=offset
         ):
             yield await self.retrieve_part(url=download_url, start=start, stop=stop)
 
     async def retrieve_part(self, *, url: str, start: int, stop: int) -> bytes:
-        """Get one part from inbox by range"""
+        """Get one part from inbox by range."""
         try:
             response = requests.get(
                 url=url, headers={"Range": f"bytes={start}-{stop}"}, timeout=60
