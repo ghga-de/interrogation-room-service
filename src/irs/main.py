@@ -14,6 +14,7 @@
 # limitations under the License.
 #
 """Top-level object construction and dependency injection"""
+
 from hexkit.log import configure_logging
 
 from irs.config import Config

@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests for event handling"""
+
 import base64
 import os
 from collections.abc import Mapping

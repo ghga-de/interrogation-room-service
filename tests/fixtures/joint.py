@@ -114,9 +114,12 @@ async def joint_fixture(
     await second_s3_fixture.populate_buckets([INBOX_BUCKET_ID, STAGING_BUCKET_ID])
 
     # Create joint_fixure using the injection
-    async with prepare_core(config=config) as interrogator, prepare_event_subscriber(
-        config=config, interrogator_override=interrogator
-    ) as event_subscriber:
+    async with (
+        prepare_core(config=config) as interrogator,
+        prepare_event_subscriber(
+            config=config, interrogator_override=interrogator
+        ) as event_subscriber,
+    ):
         yield JointFixture(
             config=config,
             event_subscriber=event_subscriber,
