@@ -55,7 +55,7 @@ class InterrogationSubject(BaseModel):
 
 class UploadReceivedFingerprint(BaseModel):
     """
-    Stores the hash of a FileUploadReceived payload along with its generation
+    Stores the hash of a InterrogationSubject payload along with its generation
     timestamp. This facilitates the identification of previously encountered
     payloads and the removal of old fingerprints.
     """
