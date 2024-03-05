@@ -16,6 +16,7 @@
 """Contains functionality dealing with low-level on-the-fly re-encryption."""
 
 import hashlib
+import logging
 import math
 import os
 
@@ -25,6 +26,8 @@ from nacl.bindings import crypto_aead_chacha20poly1305_ietf_encrypt
 from irs.core.exceptions import LastSegmentCorruptedError, SegmentCorruptedError
 from irs.core.models import Checksums
 from irs.core.staging_handler import StagingHandler
+
+log = logging.getLogger(__name__)
 
 
 class CipherSegmentProcessor:
@@ -114,10 +117,14 @@ class CipherSegmentProcessor:
     async def _process_parts(self):
         """High-level part processing, chunking into ciphersegments"""
         incomplete_ciphersegment = b""
+        current_part = 0
 
         async for part in self.object_storage_handler.retrieve_parts(
             offset=self.offset,
         ):
+            current_part += 1
+            log.debug("Processing part no. '%i'.", current_part)
+
             if self.partial_ciphersegment:
                 part = self.partial_ciphersegment + part
             ciphersegments, incomplete_ciphersegment = self._get_segments(
@@ -136,9 +143,14 @@ class CipherSegmentProcessor:
                     ciphersegment=ciphersegment, session_keys=[self.secret]
                 )
             except Exception as exc:
-                raise SegmentCorruptedError(
+                segment_corrupted = SegmentCorruptedError(
                     part_number=self.reencrypted_part_number
-                ) from exc
+                )
+                log.error(
+                    segment_corrupted,
+                    extra={"part_number": self.reencrypted_part_number},
+                )
+                raise segment_corrupted from exc
             self.total_sha256_checksum.update(decrypted)
 
             # reencrypt using the new secret
@@ -158,7 +170,9 @@ class CipherSegmentProcessor:
                 )
             # could also depend on PyNaCl directly for the exact exception
             except Exception as exc:
-                raise LastSegmentCorruptedError() from exc
+                last_segment_corrupted = LastSegmentCorruptedError()
+                log.error(last_segment_corrupted)
+                raise last_segment_corrupted from exc
             self.total_sha256_checksum.update(decrypted)
 
             # encrypt the last segment

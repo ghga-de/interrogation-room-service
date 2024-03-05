@@ -137,21 +137,23 @@ class Interrogator(InterrogatorPort):
         ID parameters refer to the object_id and bucket_id associated with the upload,
         i.e. not the staging bucket.
         """
+        file_id = subject.file_id
         fingerprint = UploadReceivedFingerprint.generate(subject=subject)
         if await self._fingerprint_already_seen(fingerprint=fingerprint):
-            file_id = subject.file_id
             log.warning(
                 "Payload for file ID '%s' has already been processed.",
                 file_id,
                 extra={"file_id": file_id},
             )
             return
+        log.debug("Checked fingerprint for file '%s'.", file_id)
 
         staging_handler = await self._init_staging_handler(
             inbox_bucket_id=subject.inbox_bucket_id,
             inbox_object_id=subject.inbox_object_id,
             storage_alias=subject.storage_alias,
         )
+        log.debug("Initialized staging handler for file '%s'.", file_id)
 
         try:
             processing_result = await self._reencrypt_and_stage(
@@ -165,6 +167,7 @@ class Interrogator(InterrogatorPort):
                 staging_handler=staging_handler, subject=subject, cause=str(exc)
             )
             return
+        log.debug("Finished re-encryption and staging for file '%s'.", file_id)
 
         # handle publishing both outcomes
         if (
@@ -189,9 +192,11 @@ class Interrogator(InterrogatorPort):
                 staging_handler=staging_handler,
                 subject=subject,
             )
+        log.debug("Finished cleanup and event sending for file '%s'.", file_id)
 
         # Everything has been processed, add fingerprint to db for lookup
         await self._fingerprint_dao.insert(fingerprint)
+        log.debug("Stored fingerprint for file '%s'.", file_id)
 
     async def remove_staging_object(self, *, file_id: str, storage_alias: str) -> None:
         """Remove transient object from staging once copy to permanent storage has been confirmed."""
@@ -229,3 +234,4 @@ class Interrogator(InterrogatorPort):
             bucket_id=staging_bucket_id, object_id=staging_object.object_id
         )
         await self._staging_object_dao.delete(id_=file_id)
+        log.debug("Successfullly removed staging object for file '%s'.", file_id)

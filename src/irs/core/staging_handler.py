@@ -107,6 +107,8 @@ class StagingHandler(StagingHandlerPort):
         except requests.exceptions.RequestException as request_error:
             raise exceptions.RequestFailedError(url=url) from request_error
 
+        log.debug("Staged part '%i' for upload '%s'.", part_number, self._upload_id)
+
     async def complete_staging(self, *, parts: int) -> None:
         """Complete the staging of a re-encrypted file."""
         if not self._upload_id:
@@ -182,6 +184,8 @@ class StagingHandler(StagingHandlerPort):
                 url=url, headers={"Range": f"bytes={start}-{stop}"}, timeout=60
             )
         except requests.exceptions.RequestException as request_error:
-            raise exceptions.RequestFailedError(url=url) from request_error
+            request_failed = exceptions.RequestFailedError(url=url)
+            log.error(request_failed, extra={"url": url})
+            raise request_failed from request_error
 
         return response.content

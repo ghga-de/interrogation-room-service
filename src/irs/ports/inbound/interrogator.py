@@ -29,9 +29,7 @@ class InterrogatorPort(ABC):
         Forwards first file part to encryption key store, retrieves file encryption
         secret(s) (K_data), decrypts file and computes checksums
         """
-        ...
 
     @abstractmethod
     async def remove_staging_object(self, *, file_id: str, storage_alias: str) -> None:
         """Remove transient object from staging once copy to permanent storage has been confirmed"""
-        ...
