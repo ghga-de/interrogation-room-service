@@ -15,11 +15,15 @@
 """Service specific exceptions"""
 
 
-class KnownError(RuntimeError):
+class EnvelopeError(RuntimeError):
     """Base class for custom errors encountered"""
 
 
-class BadResponseCodeError(KnownError):
+class TransientError(RuntimeError):
+    """Base class for intermittent errors"""
+
+
+class BadResponseCodeError(TransientError):
     """Thrown, when a request returns an unexpected response code (e.g. 500)"""
 
     def __init__(self, *, url: str, response_code: int):
@@ -28,7 +32,7 @@ class BadResponseCodeError(KnownError):
         super().__init__(message)
 
 
-class EnvelopeDecryptionError(KnownError):
+class EnvelopeDecryptionError(EnvelopeError):
     """
     Thrown when the encryption key store could not decrypt the envelope with the provided
     keypairs
@@ -39,7 +43,7 @@ class EnvelopeDecryptionError(KnownError):
         super().__init__(message)
 
 
-class MalformedOrMissingEnvelope(KnownError):
+class MalformedOrMissingEnvelope(EnvelopeError):
     """Thrown when the when the encryption key store could not find a valid envelope"""
 
     def __init__(self):
@@ -47,7 +51,7 @@ class MalformedOrMissingEnvelope(KnownError):
         super().__init__(message)
 
 
-class RequestFailedError(KnownError):
+class RequestFailedError(TransientError):
     """Thrown when a request fails without returning a response code"""
 
     def __init__(self, *, url: str):
@@ -55,7 +59,7 @@ class RequestFailedError(KnownError):
         super().__init__(message)
 
 
-class SecretInsertionError(KnownError):
+class SecretInsertionError(TransientError):
     """Thrown when an internal vault error causes secret storage to fail"""
 
     def __init__(self):
@@ -63,7 +67,7 @@ class SecretInsertionError(KnownError):
         super().__init__(message)
 
 
-class VaultConnectionError(KnownError):
+class VaultConnectionError(TransientError):
     """Thrown when a connection error causes secret storage to fail"""
 
     def __init__(self):

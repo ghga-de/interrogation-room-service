@@ -13,13 +13,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests for event handling"""
+
 import base64
 import os
 from collections.abc import Mapping
+from copy import deepcopy
 from functools import partial
+from typing import Any
 
 import pytest
-from ghga_event_schemas import pydantic_ as event_schemas
 from ghga_service_commons.utils.utc_dates import now_as_utc
 from hexkit.protocols.dao import ResourceNotFoundError
 from hexkit.providers.akafka.testutils import ExpectedEvent
@@ -29,7 +31,7 @@ from irs.adapters.outbound.dao import (
     FingerprintDaoConstructor,
     StagingObjectDaoConstructor,
 )
-from irs.core.models import UploadReceivedFingerprint
+from irs.core.models import InterrogationSubject, UploadReceivedFingerprint
 from tests.fixtures.config import Config
 from tests.fixtures.joint import (
     INBOX_BUCKET_ID,
@@ -47,7 +49,7 @@ from tests.fixtures.test_files import EncryptedData, create_test_file
 EKSS_NEW_SECRET = os.urandom(32)
 
 
-def incoming_event_file_registered(
+def _incoming_event_file_registered(
     payload: dict[str, object], config: Config
 ) -> Mapping[str, object]:
     """Emulate incoming file registered event"""
@@ -58,7 +60,7 @@ def incoming_event_file_registered(
     return event
 
 
-def incoming_event_upload_received(
+def _incoming_event_upload_received(
     payload: dict[str, object], config: Config
 ) -> Mapping[str, object]:
     """Emulate incoming upload received event"""
@@ -69,7 +71,22 @@ def incoming_event_upload_received(
     return event
 
 
-def ekss_call(
+def _populate_subject(payload: dict[str, Any]) -> InterrogationSubject:
+    """Convert payload to internally used model."""
+    fields = deepcopy(payload)
+
+    inbox_bucket_id = fields.pop("bucket_id")
+    inbox_object_id = fields.pop("object_id")
+    storage_alias = fields.pop("s3_endpoint_alias")
+
+    fields["storage_alias"] = storage_alias
+    fields["inbox_bucket_id"] = inbox_bucket_id
+    fields["inbox_object_id"] = inbox_object_id
+
+    return InterrogationSubject(**fields)
+
+
+def _ekss_call(
     *, data: EncryptedData, file_part: bytes, public_key: bytes, api_url: str
 ) -> tuple[bytes, bytes, str, int]:
     """Monkeypatch to emulate API Call"""
@@ -97,7 +114,7 @@ async def test_failure_event(
             public_key=joint_fixture.keypair.public,
             s3=s3,
         )
-        ekss_patch = partial(ekss_call, data=data)
+        ekss_patch = partial(_ekss_call, data=data)
 
         monkeypatch.setattr(
             "irs.core.interrogator.call_eks_api",
@@ -116,11 +133,12 @@ async def test_failure_event(
             "expected_decrypted_sha256": data.checksum,
             "decrypted_size": data.file_size,
         }
+
         # introduce invalid checksum
         payload_in["expected_decrypted_sha256"] = payload_in[
             "expected_decrypted_sha256"
         ][1:]
-        event_in = incoming_event_upload_received(
+        event_in = _incoming_event_upload_received(
             payload=payload_in, config=joint_fixture.config
         )
 
@@ -159,15 +177,15 @@ async def test_failure_event(
         with pytest.raises(ResourceNotFoundError):
             await staging_object_dao.get_by_id(id_=data.file_id)
 
-        # check fingerprint is not created for unsuccessful processing
+        # check fingerprint is created for unsuccessful processing
         fingerprint_dao = await FingerprintDaoConstructor.construct(
             dao_factory=joint_fixture.mongodb.dao_factory
         )
-        seen_event = event_schemas.FileUploadReceived(**payload_in)
+
+        seen_event = _populate_subject(payload_in)
         fingerprint = UploadReceivedFingerprint.generate(seen_event)
 
-        with pytest.raises(ResourceNotFoundError):
-            await fingerprint_dao.get_by_id(fingerprint.checksum)
+        await fingerprint_dao.get_by_id(fingerprint.checksum)
 
 
 @pytest.mark.asyncio(scope="session")
@@ -191,7 +209,7 @@ async def test_success_event(
             s3=s3,
         )
 
-        ekss_patch = partial(ekss_call, data=data)
+        ekss_patch = partial(_ekss_call, data=data)
 
         monkeypatch.setattr(
             "irs.core.interrogator.call_eks_api",
@@ -210,7 +228,7 @@ async def test_success_event(
             "expected_decrypted_sha256": data.checksum,
             "decrypted_size": data.file_size,
         }
-        event_in = incoming_event_upload_received(
+        event_in = _incoming_event_upload_received(
             payload=payload_in, config=joint_fixture.config
         )
 
@@ -263,7 +281,8 @@ async def test_success_event(
         mongo_dao = await FingerprintDaoConstructor.construct(
             dao_factory=joint_fixture.mongodb.dao_factory
         )
-        seen_event = event_schemas.FileUploadReceived(**payload_in)
+
+        seen_event = _populate_subject(payload_in)
         fingerprint = UploadReceivedFingerprint.generate(seen_event)
 
         await mongo_dao.get_by_id(fingerprint.checksum)
@@ -284,7 +303,7 @@ async def test_success_event(
             "upload_date": now_as_utc().isoformat(),
         }
 
-        remove_event = incoming_event_file_registered(
+        remove_event = _incoming_event_file_registered(
             payload=payload_remove_object, config=joint_fixture.config
         )
 
@@ -319,7 +338,7 @@ async def test_fingerprint_already_present(
             s3=s3,
         )
 
-        ekss_patch = partial(ekss_call, data=data)
+        ekss_patch = partial(_ekss_call, data=data)
 
         monkeypatch.setattr(
             "irs.core.interrogator.call_eks_api",
@@ -338,7 +357,7 @@ async def test_fingerprint_already_present(
             "expected_decrypted_sha256": data.checksum,
             "decrypted_size": data.file_size,
         }
-        event_in = incoming_event_upload_received(
+        event_in = _incoming_event_upload_received(
             payload=payload_in, config=joint_fixture.config
         )
 
@@ -346,7 +365,7 @@ async def test_fingerprint_already_present(
         mongo_dao = await FingerprintDaoConstructor.construct(
             dao_factory=joint_fixture.mongodb.dao_factory
         )
-        seen_event = event_schemas.FileUploadReceived(**payload_in)
+        seen_event = _populate_subject(payload_in)
         fingerprint = UploadReceivedFingerprint.generate(seen_event)
 
         await mongo_dao.insert(fingerprint)

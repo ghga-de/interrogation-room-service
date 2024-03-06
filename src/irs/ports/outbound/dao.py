@@ -15,7 +15,6 @@
 #
 """DAO interface used for accessing the database."""
 
-
 from hexkit.protocols.dao import DaoNaturalId
 
 from irs.core import models

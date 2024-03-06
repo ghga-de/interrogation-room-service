@@ -21,10 +21,11 @@ from hexkit.protocols.eventsub import EventSubscriberProtocol
 from pydantic import Field
 from pydantic_settings import BaseSettings
 
+from irs.core.models import InterrogationSubject
 from irs.ports.inbound.interrogator import InterrogatorPort
 
 
-class EventSubTanslatorConfig(BaseSettings):
+class EventSubTranslatorConfig(BaseSettings):
     """Config for publishing file upload-related events."""
 
     file_registered_event_topic: str = Field(
@@ -58,7 +59,7 @@ class EventSubTranslator(EventSubscriberProtocol):
 
     def __init__(
         self,
-        config: EventSubTanslatorConfig,
+        config: EventSubTranslatorConfig,
         interrogator: InterrogatorPort,
     ):
         """Initialize with config parameters and core dependencies."""
@@ -101,8 +102,17 @@ class EventSubTranslator(EventSubscriberProtocol):
             payload=payload,
             schema=event_schemas.FileUploadReceived,
         )
-
-        await self._interrogator.interrogate(payload=validated_payload)
+        subject = InterrogationSubject(
+            file_id=validated_payload.file_id,
+            inbox_bucket_id=validated_payload.bucket_id,
+            inbox_object_id=validated_payload.object_id,
+            storage_alias=validated_payload.s3_endpoint_alias,
+            decrypted_size=validated_payload.decrypted_size,
+            expected_decrypted_sha256=validated_payload.expected_decrypted_sha256,
+            upload_date=validated_payload.upload_date,
+            submitter_public_key=validated_payload.submitter_public_key,
+        )
+        await self._interrogator.interrogate(subject=subject)
 
     async def _consume_file_internally_registered(self, *, payload: JsonObject):
         """
