@@ -15,7 +15,7 @@
 """Service specific exceptions"""
 
 
-class KnownError(RuntimeError):
+class EnvelopeError(RuntimeError):
     """Base class for custom errors encountered"""
 
 
@@ -32,7 +32,7 @@ class BadResponseCodeError(TransientError):
         super().__init__(message)
 
 
-class EnvelopeDecryptionError(KnownError):
+class EnvelopeDecryptionError(EnvelopeError):
     """
     Thrown when the encryption key store could not decrypt the envelope with the provided
     keypairs
@@ -43,7 +43,7 @@ class EnvelopeDecryptionError(KnownError):
         super().__init__(message)
 
 
-class MalformedOrMissingEnvelope(KnownError):
+class MalformedOrMissingEnvelope(EnvelopeError):
     """Thrown when the when the encryption key store could not find a valid envelope"""
 
     def __init__(self):

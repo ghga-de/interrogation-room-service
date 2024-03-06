@@ -59,6 +59,11 @@ class StagingInspector(StorageInspectorPort):
         self, *, bucket_id: str, object_id: str, storage_alias: str
     ):
         """Check one specific object in a specified storage node."""
+        extra = {
+            "object_id": object_id,
+            "bucket_id": bucket_id,
+            "storage_alias": storage_alias,
+        }
         try:
             staging_object = await self._staging_object_dao.find_one(
                 mapping={"object_id": object_id, "storage_alias": storage_alias}
@@ -67,11 +72,6 @@ class StagingInspector(StorageInspectorPort):
             # This can happen in one of two cases:
             # 1) Failed to send success event
             # 2) Success event sent, but failed to insert staging object entry
-            extra = {
-                "object_id": object_id,
-                "bucket_id": bucket_id,
-                "storage_alias": storage_alias,
-            }
             log.error(
                 "Object '%s' with no corresponding DB entry found in bucket '%s'"
                 + " of storage '%s'.",
@@ -82,11 +82,6 @@ class StagingInspector(StorageInspectorPort):
 
         except MultipleHitsFoundError as error:
             # can only happen if the same object ID is generated from uuid4()
-            extra = {
-                "object_id": object_id,
-                "bucket_id": bucket_id,
-                "storage_alias": storage_alias,
-            }
             log.critical(
                 error,
                 extra=extra,
@@ -98,13 +93,7 @@ class StagingInspector(StorageInspectorPort):
         )
         if staging_object.creation_date <= stale_as_of:
             # only log for now, but this points to an underlying issue
-            extra = {
-                "object_id": object_id,
-                "file_id": staging_object.file_id,
-                "bucket_id": bucket_id,
-                "storage_alias": storage_alias,
-            }
-
+            extra["file_id"] = staging_object.file_id
             log.error(
                 "Stale object '%s' found for file '%s' in bucket '%s' of storage '%s'.",
                 *extra.values(),

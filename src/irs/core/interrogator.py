@@ -24,7 +24,7 @@ from hexkit.protocols.dao import ResourceNotFoundError
 from hexkit.utils import calc_part_size
 
 from irs.adapters.outbound.http.api_calls import call_eks_api
-from irs.adapters.outbound.http.exceptions import KnownError, TransientError
+from irs.adapters.outbound.http.exceptions import EnvelopeError, TransientError
 from irs.config import CONFIG
 from irs.core.models import (
     InterrogationSubject,
@@ -160,7 +160,7 @@ class Interrogator(InterrogatorPort):
                 staging_handler=staging_handler,
                 submitter_public_key=subject.submitter_public_key,
             )
-        except (CryptoError, KnownError, ValueError) as error:
+        except (CryptoError, EnvelopeError, ValueError) as error:
             # These should be systemic issues with the file submitted, i.e. there's no
             # way to recover without resubmitting in the upstream service
             log.error(error)
@@ -247,4 +247,4 @@ class Interrogator(InterrogatorPort):
             bucket_id=staging_bucket_id, object_id=staging_object.object_id
         )
         await self._staging_object_dao.delete(id_=file_id)
-        log.debug("Successfullly removed staging object for file '%s'.", file_id)
+        log.debug("Successfully removed staging object for file '%s'.", file_id)
