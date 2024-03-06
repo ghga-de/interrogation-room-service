@@ -24,7 +24,7 @@ from hexkit.protocols.dao import ResourceNotFoundError
 from hexkit.utils import calc_part_size
 
 from irs.adapters.outbound.http.api_calls import call_eks_api
-from irs.adapters.outbound.http.exceptions import KnownError
+from irs.adapters.outbound.http.exceptions import KnownError, TransientError
 from irs.config import CONFIG
 from irs.core.models import (
     InterrogationSubject,
@@ -160,13 +160,26 @@ class Interrogator(InterrogatorPort):
                 staging_handler=staging_handler,
                 submitter_public_key=subject.submitter_public_key,
             )
-        except (CryptoError, KnownError, ValueError) as exc:
-            # remove data for ongoing upload in case of failure
+        except (CryptoError, KnownError, ValueError) as error:
+            # These should be systemic issues with the file submitted, i.e. there's no
+            # way to recover without resubmitting in the upstream service
+            log.error(error)
             await staging_handler.abort_staging()
             await self._event_publisher.publish_validation_failure(
-                staging_handler=staging_handler, subject=subject, cause=str(exc)
+                staging_handler=staging_handler, subject=subject, cause=str(error)
             )
+            # Add fingerprint to db for lookup
+            await self._fingerprint_dao.insert(fingerprint)
+            log.debug("Stored fingerprint for file '%s'.", file_id)
             return
+
+        except TransientError as error:
+            # All these exceptions should come from either a misconfigured connection URL,
+            # network issues or actual issues with the EKSS. These issues should crash this
+            # service to avoid unnecessary work that will ultimately fail
+            log.critical(error)
+            raise
+
         log.debug("Finished re-encryption and staging for file '%s'.", file_id)
 
         # handle publishing both outcomes
