@@ -96,7 +96,10 @@ class StagingInspector(StorageInspectorPort):
             extra["file_id"] = staging_object.file_id
             log.error(
                 "Stale object '%s' found for file '%s' in bucket '%s' of storage '%s'.",
-                *extra.values(),
+                *[
+                    extra[key]
+                    for key in ("object_id", "file_id", "bucket_id", "storage_alias")
+                ],
                 extra=extra,
             )
 
